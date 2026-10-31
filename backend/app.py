@@ -117,6 +117,10 @@ def run_subprocess(cmd, input_data=None, cwd=None):
         return res.stdout[:MAX_OUTPUT], res.stderr[:MAX_OUTPUT]
     except subprocess.TimeoutExpired:
         return "", "Execution timed out"
+    except FileNotFoundError as e:
+        # Interpreter not installed on the host
+        missing_cmd = cmd[0] if cmd else "unknown"
+        return "", f"Interpreter not found: {missing_cmd}. Please install it or use Docker."
     except Exception as e:
         return "", f"Internal error: {e}"
 
