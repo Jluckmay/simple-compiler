@@ -60,22 +60,26 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 
 ## Supported Languages / Linguagens Suportadas
 
-| Language / Linguagem | Docker Image | Compile? / Compila? |
-|----------|--------------|----------|
-| Python | `python:3.12-slim` | No / Não |
-| C | `gcc:13` | Yes / Sim |
-| C++ | `gcc:13` | Yes / Sim |
-| C# | `mcr.microsoft.com/dotnet/sdk:8.0` | No (dotnet‑script) / Não (dotnet‑script) |
-| Java | `openjdk:21` | Yes (javac) / Sim (javac) |
-| JavaScript | `node:20-slim` | No / Não |
-| TypeScript | `node:20-slim` | No (ts‑node) / Não (ts‑node) |
-| SQL (SQLite) | `nouchka/sqlite3` | No / Não |
-| Lua | `lua:5.4` | No / Não |
-| Go | `golang:1.22` | No (go run) / Não (go run) |
-| Lean | `leanprover/lean4:latest` | No / Não |
-| R | `r-base:latest` | No / Não |
-| LaTeX | `texlive/texlive:latest` | No (pdflatex) / Não (pdflatex) |
-| HTML/CSS | `node:20-slim` | No (cat) / Não (cat) |
+| Language / Linguagem | Docker Image | Compile? / Compila? | Local Interpreter Required / Intérprete Local Necessário |
+|----------|--------------|----------|----------------------|
+| Python | `python:3.12-slim` | No / Não | Python 3.12+ |
+| C | `gcc:13` | Yes / Sim | gcc |
+| C++ | `gcc:13` | Yes / Sim | g++ |
+| C# | `mcr.microsoft.com/dotnet/sdk:8.0` | No (dotnet‑script) / Não (dotnet‑script) | .NET SDK 8.0+ |
+| Java | `openjdk:21` | Yes (javac) / Sim (javac) | JDK 21+ |
+| JavaScript | `node:20-slim` | No / Não | Node.js 20+ |
+| TypeScript | `node:20-slim` | No (ts‑node) / Não (ts‑node) | Node.js 20+ + ts-node |
+| SQL (SQLite) | `nouchka/sqlite3` | No / Não | sqlite3 |
+| Lua | `lua:5.4` | No / Não | Lua 5.4+ |
+| Go | `golang:1.22` | No (go run) / Não (go run) | Go 1.22+ |
+| Lean | `leanprover/lean4:latest` | No / Não | Lean 4+ |
+| R | `r-base:latest` | No / Não | R-base |
+| LaTeX | `texlive/texlive:latest` | No (pdflatex) / Não (pdflatex) | TeX Live |
+| HTML/CSS | `node:20-slim` | No (cat) / Não (cat) | None / Nenhum |
+
+> **Note / Nota:** When running locally without Docker, only languages with their interpreters installed on the host will work. When using Docker (local or Render), all languages work via their respective container images. Docker is optional — the backend falls back to subprocess execution for safe code.
+
+> **Nota / Note:** Ao executar localmente sem Docker, apenas linguagens com seus interpretadores instalados no host funcionarão. Ao usar Docker (local ou Render), todas as linguagens funcionam via suas respectivas imagens de contêiner. O Docker é opcional — o backend faz fallback para execução via subprocesso para código seguro.
 
 ---
 
@@ -85,15 +89,21 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 1. **Docker isolation** – each request spawns a short‑lived container, network disabled, resource caps applied.
 2. **Timeout & output limits** – enforced both in Docker and the subprocess fallback to prevent hangs and data‑exfiltration.
 3. **Input validation** – only `code` (string) and `language` (whitelisted) are accepted; unknown languages return a 400 error.
-4. **No persistent filesystem** – source files are written to a temporary directory and removed after execution.
-5. **Error handling** – any Docker‑related error returns a clear message in the `error` field; the service never crashes.
+4. **Dangerous pattern detection** – code containing `import os`, `subprocess`, `eval()`, `exec()`, `open()`, `os.system()`, shell metacharacters, backticks, and other dangerous patterns is rejected with HTTP 400 before execution.
+5. **No persistent filesystem** – source files are written to a temporary directory and removed after execution.
+6. **Error sanitization** – error messages are scrubbed of system paths, usernames, and sensitive information before being returned to the client.
+7. **Maximum payload size** – code submissions larger than 100 KB are rejected with HTTP 413.
+8. **Subprocess fallback safety** – when Docker is unavailable, the subprocess fallback only runs code that has already passed dangerous pattern validation.
 
 **Português:**
 1. **Isolamento Docker** – cada requisição gera um contêiner de curta duração, rede desabilitada, limites de recursos aplicados.
 2. **Limites de tempo e saída** – aplicados tanto no Docker quanto no fallback de subprocesso para evitar travamentos e exfiltração de dados.
 3. **Validação de entrada** – apenas `code` (string) e `language` (lista branca) são aceitos; linguagens desconhecidas retornam erro 400.
-4. **Sem sistema de arquivos persistente** – arquivos de origem são gravados em um diretório temporário e removidos após a execução.
-5. **Tratamento de erros** – qualquer erro relacionado ao Docker retorna uma mensagem clara no campo `error`; o serviço nunca falha.
+4. **Detecção de padrões perigosos** – código contendo `import os`, `subprocess`, `eval()`, `exec()`, `open()`, `os.system()`, metacaracteres de shell, crases e outros padrões perigosos é rejeitado com HTTP 400 antes da execução.
+5. **Sem sistema de arquivos persistente** – arquivos de origem são gravados em um diretório temporário e removidos após a execução.
+6. **Sanitização de erros** – mensagens de erro são limpas de caminhos do sistema, nomes de usuário e informações sensíveis antes de serem retornadas ao cliente.
+7. **Tamanho máximo de payload** – submissões de código maiores que 100 KB são rejeitadas com HTTP 413.
+8. **Segurança do fallback de subprocesso** – quando o Docker está indisponível, o fallback de subprocesso apenas executa código que já passou pela validação de padrões perigosos.
 
 ---
 
