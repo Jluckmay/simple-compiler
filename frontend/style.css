@@ -188,6 +188,11 @@ body {
   transition: var(--transition);
 }
 
+.shell-code::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
 .shell-code:hover {
   border-color: var(--text-dim);
 }
