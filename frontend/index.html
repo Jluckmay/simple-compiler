@@ -1,49 +1,62 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Compiler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1 data-i18n="title">Simple Compiler</h1>
-    <div class="controls">
-      <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙/☀️</button>
-      <select id="lang-select" aria-label="Select language">
+  <header class="shell-header">
+    <div class="shell-brand">
+      <span class="shell-prompt">~</span><span class="shell-slash">/</span>
+      <h1 data-i18n="title">Simple Compiler</h1>
+    </div>
+    <div class="shell-controls">
+      <button id="theme-toggle" aria-label="Toggle dark/light mode" class="shell-btn shell-btn-icon">🌙/☀️</button>
+      <select id="lang-select" aria-label="Select language" class="shell-select">
         <option value="en" selected>English</option>
         <option value="pt">Português</option>
       </select>
     </div>
   </header>
-  <main>
-    <section class="editor">
-      <label for="language" data-i18n="languageLabel">Language</label>
-      <select id="language">
-        <option value="python">Python</option>
-        <option value="c">C</option>
-        <option value="cpp">C++</option>
-        <option value="csharp">C#</option>
-        <option value="java">Java</option>
-        <option value="js">JavaScript</option>
-        <option value="ts">TypeScript</option>
-        <option value="sql">SQL</option>
-        <option value="lua">Lua</option>
-        <option value="go">Go</option>
-        <option value="lean">Lean</option>
-        <option value="r">R</option>
-        <option value="latex">LaTeX</option>
-        <option value="htmlcss">HTML/CSS</option>
-      </select>
-      <textarea id="code" rows="12" placeholder="Write your code here..."></textarea>
-      <button id="run" data-i18n="runButton">Run</button>
+
+  <main class="shell-main">
+    <section class="editor-card card">
+      <div class="card-header">
+        <label for="language" data-i18n="languageLabel" class="card-label">Language</label>
+        <select id="language" class="shell-select">
+          <option value="python">Python</option>
+          <option value="c">C</option>
+          <option value="cpp">C++</option>
+          <option value="csharp">C#</option>
+          <option value="java">Java</option>
+          <option value="js">JavaScript</option>
+          <option value="ts">TypeScript</option>
+          <option value="sql">SQL</option>
+          <option value="lua">Lua</option>
+          <option value="go">Go</option>
+          <option value="lean">Lean</option>
+          <option value="r">R</option>
+          <option value="latex">LaTeX</option>
+          <option value="htmlcss">HTML/CSS</option>
+        </select>
+      </div>
+      <textarea id="code" rows="12" class="shell-code" placeholder="Write your code here..."></textarea>
+      <button id="run" data-i18n="runButton" class="shell-btn shell-btn-primary">Run</button>
     </section>
-    <section class="output" aria-live="polite">
-      <h2 data-i18n="outputTitle">Output</h2>
-      <pre id="result"></pre>
+
+    <section class="output-card card" aria-live="polite">
+      <div class="card-header">
+        <h2 data-i18n="outputTitle" class="card-title">Output</h2>
+      </div>
+      <pre id="result" class="shell-output"></pre>
     </section>
   </main>
+
   <script src="script.js"></script>
 </body>
 </html>
