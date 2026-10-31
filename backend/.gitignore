@@ -1,0 +1,16 @@
+# Python cache and virtual env files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+.venv/
+# OS files
+.DS_Store
+Thumbs.db
+# Build artefacts
+build/
+*.egg-info/
+# Local settings
+.env
