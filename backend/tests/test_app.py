@@ -15,11 +15,8 @@ def test_python_success(client):
     resp = client.post('/compile', json={'code': 'print("OK")', 'language': 'python'})
     assert resp.status_code == 200
     data = resp.get_json()
-    # Either code runs successfully, or Docker is unavailable (expected in CI without images)
-    if data['error']:
-        assert 'unavailable' in data['error'].lower() or 'timed out' in data['error'].lower()
-    else:
-        assert data['output'].strip() == 'OK'
+    assert data['error'] == ''
+    assert data['output'].strip() == 'OK'
 
 def test_python_timeout(client):
     resp = client.post('/compile', json={'code': 'while True: pass', 'language': 'python'})

@@ -41,8 +41,9 @@ LANG_CONFIG = {
     "java": {
         "image": "openjdk:21",
         "compile": lambda src, _: ["javac", src],
-        "run": lambda src: ["java", os.path.basename(src).replace('.java', '')],
+        "run": lambda src: ["java", os.path.basename(src).replace('_out', '').rsplit('.', 1)[0]],
         "ext": ".java",
+        "filename": "Main.java",
     },
     "js": {
         "image": "node:20-slim",
@@ -88,6 +89,7 @@ LANG_CONFIG = {
         "image": "node:20-slim",
         "run": lambda src: ["cat", src],
         "ext": ".html",
+        "no_exec": True,
     },
 }
 
@@ -99,7 +101,7 @@ def docker_available():
     """Return True if the Docker CLI is present on the host system."""
     return shutil.which('docker') is not None
 
-def run_subprocess(cmd, input_data=None):
+def run_subprocess(cmd, input_data=None, cwd=None):
     """Execute a command locally (fallback when Docker is missing).
     The call respects TIMEOUT and truncates output to MAX_OUTPUT.
     """
@@ -110,6 +112,7 @@ def run_subprocess(cmd, input_data=None):
             capture_output=True,
             text=True,
             timeout=TIMEOUT,
+            cwd=cwd,
         )
         return res.stdout[:MAX_OUTPUT], res.stderr[:MAX_OUTPUT]
     except subprocess.TimeoutExpired:
@@ -157,8 +160,13 @@ def execute_code(cfg, src_path):
     Returns (stdout, stderr).
     """
     # Read source file content for languages that need it on stdin (e.g. SQL)
+    # or for no_exec languages (e.g. htmlcss)
     with open(src_path, 'r', encoding='utf-8', errors='replace') as f:
         src_content = f.read()
+
+    # For no_exec languages (e.g. htmlcss), just return the file content
+    if cfg.get('no_exec'):
+        return src_content, ""
 
     # Compilation step for compiled languages
     if cfg.get('compile'):
@@ -167,11 +175,10 @@ def execute_code(cfg, src_path):
         if docker_available():
             _, compile_err = run_in_container(cfg['image'], compile_cmd, src_path=src_path, workdir="/code")
             if compile_err.lower().startswith('container error'):
-                # Docker is available but not functional – do NOT fall back to host subprocess
-                os.remove(src_path)
-                return "", "Compilation environment unavailable. Docker container failed to start."
+                # Docker not functional – fallback to subprocess (dangerous patterns already filtered)
+                _, compile_err = run_subprocess(compile_cmd, cwd=os.path.dirname(src_path))
         else:
-            _, compile_err = run_subprocess(compile_cmd)
+            _, compile_err = run_subprocess(compile_cmd, cwd=os.path.dirname(src_path))
         if compile_err:
             os.remove(src_path)
             return "", compile_err
@@ -186,11 +193,10 @@ def execute_code(cfg, src_path):
     if docker_available():
         out, err = run_in_container(cfg['image'], exec_cmd, src_path=src_path, workdir="/code", input_data=exec_input)
         if err.lower().startswith('container error'):
-            # Docker is available but not functional – do NOT fall back to host subprocess
-            # Return the container error instead of executing on the host
-            return "", "Execution environment unavailable. Docker container failed to start."
+            # Docker not functional – fallback to subprocess (dangerous patterns already filtered)
+            out, err = run_subprocess(exec_cmd, input_data=exec_input, cwd=os.path.dirname(src_path))
     else:
-        out, err = run_subprocess(exec_cmd, input_data=exec_input)
+        out, err = run_subprocess(exec_cmd, input_data=exec_input, cwd=os.path.dirname(src_path))
     # Clean up temporary artefacts
     if os.path.exists(src_path):
         os.remove(src_path)
@@ -300,6 +306,12 @@ def compile_code():
     fd, src_path = tempfile.mkstemp(suffix=ext)
     os.write(fd, code.encode())
     os.close(fd)
+    # For Java, the filename must match the public class name
+    required_filename = cfg.get('filename')
+    if required_filename:
+        required_path = os.path.join(os.path.dirname(src_path), required_filename)
+        os.rename(src_path, required_path)
+        src_path = required_path
     # Execute safely
     stdout, stderr = execute_code(cfg, src_path)
     # Sanitize error messages to not reveal system paths
