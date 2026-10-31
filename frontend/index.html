@@ -16,11 +16,8 @@
       <h1 data-i18n="title">Simple Compiler</h1>
     </div>
     <div class="shell-controls">
-      <button id="theme-toggle" aria-label="Toggle dark/light mode" class="shell-btn shell-btn-icon">🌙/☀️</button>
-      <select id="lang-select" aria-label="Select language" class="shell-select">
-        <option value="en" selected>English</option>
-        <option value="pt">Português</option>
-      </select>
+      <button id="theme-toggle" aria-label="Toggle dark/light mode" class="shell-btn shell-btn-icon">☀️</button>
+      <button id="lang-toggle" aria-label="Toggle language" class="shell-btn shell-btn-icon">EN</button>
     </div>
   </header>
 
@@ -28,22 +25,23 @@
     <section class="editor-card card">
       <div class="card-header">
         <label for="language" data-i18n="languageLabel" class="card-label">Language</label>
-        <select id="language" class="shell-select">
-          <option value="python">Python</option>
-          <option value="c">C</option>
-          <option value="cpp">C++</option>
-          <option value="csharp">C#</option>
-          <option value="java">Java</option>
-          <option value="js">JavaScript</option>
-          <option value="ts">TypeScript</option>
-          <option value="sql">SQL</option>
-          <option value="lua">Lua</option>
-          <option value="go">Go</option>
-          <option value="lean">Lean</option>
-          <option value="r">R</option>
-          <option value="latex">LaTeX</option>
-          <option value="htmlcss">HTML/CSS</option>
-        </select>
+        <div class="lang-grid" id="language-grid">
+          <button type="button" class="lang-btn active" data-lang="python" title="Python">🐍</button>
+          <button type="button" class="lang-btn" data-lang="c" title="C">🔧</button>
+          <button type="button" class="lang-btn" data-lang="cpp" title="C++">⚡</button>
+          <button type="button" class="lang-btn" data-lang="csharp" title="C#">🔷</button>
+          <button type="button" class="lang-btn" data-lang="java" title="Java">☕</button>
+          <button type="button" class="lang-btn" data-lang="js" title="JavaScript">📜</button>
+          <button type="button" class="lang-btn" data-lang="ts" title="TypeScript">📘</button>
+          <button type="button" class="lang-btn" data-lang="sql" title="SQL">🗄️</button>
+          <button type="button" class="lang-btn" data-lang="lua" title="Lua">🌙</button>
+          <button type="button" class="lang-btn" data-lang="go" title="Go">🐹</button>
+          <button type="button" class="lang-btn" data-lang="lean" title="Lean">🧮</button>
+          <button type="button" class="lang-btn" data-lang="r" title="R">📊</button>
+          <button type="button" class="lang-btn" data-lang="latex" title="LaTeX">📄</button>
+          <button type="button" class="lang-btn" data-lang="htmlcss" title="HTML/CSS">🌐</button>
+        </div>
+        <input type="hidden" id="language" value="python" />
       </div>
       <textarea id="code" rows="12" class="shell-code" placeholder="Write your code here..."></textarea>
       <button id="run" data-i18n="runButton" class="shell-btn shell-btn-primary">Run</button>

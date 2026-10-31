@@ -197,6 +197,46 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
 }
 
+/* ===== Language Grid ===== */
+.lang-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.lang-btn {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: var(--transition);
+  outline: none;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.lang-btn:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
+.lang-btn.active {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.lang-btn:focus-visible {
+  border-color: var(--accent-red);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+}
+
 /* ===== Buttons ===== */
 .shell-btn {
   border: none;
