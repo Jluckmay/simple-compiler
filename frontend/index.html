@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -25,25 +26,27 @@
     <section class="editor-card card">
       <div class="card-header">
         <label for="language" data-i18n="languageLabel" class="card-label">Language</label>
-        <div class="lang-grid" id="language-grid">
-          <button type="button" class="lang-btn active" data-lang="python" title="Python">🐍</button>
-          <button type="button" class="lang-btn" data-lang="c" title="C">🔧</button>
-          <button type="button" class="lang-btn" data-lang="cpp" title="C++">⚡</button>
-          <button type="button" class="lang-btn" data-lang="csharp" title="C#">🔷</button>
-          <button type="button" class="lang-btn" data-lang="java" title="Java">☕</button>
-          <button type="button" class="lang-btn" data-lang="js" title="JavaScript">📜</button>
-          <button type="button" class="lang-btn" data-lang="ts" title="TypeScript">📘</button>
-          <button type="button" class="lang-btn" data-lang="sql" title="SQL">🗄️</button>
-          <button type="button" class="lang-btn" data-lang="lua" title="Lua">🌙</button>
-          <button type="button" class="lang-btn" data-lang="go" title="Go">🐹</button>
-          <button type="button" class="lang-btn" data-lang="lean" title="Lean">🧮</button>
-          <button type="button" class="lang-btn" data-lang="r" title="R">📊</button>
-          <button type="button" class="lang-btn" data-lang="latex" title="LaTeX">📄</button>
-          <button type="button" class="lang-btn" data-lang="htmlcss" title="HTML/CSS">🌐</button>
-        </div>
         <input type="hidden" id="language" value="python" />
       </div>
-      <textarea id="code" rows="12" class="shell-code" placeholder="Write your code here..."></textarea>
+      <div class="editor-wrapper">
+        <div class="lang-sidebar" id="lang-sidebar">
+          <button type="button" class="lang-btn active" data-lang="python" title="Python"><i class="fa-brands fa-python"></i></button>
+          <button type="button" class="lang-btn" data-lang="c" title="C"><i class="fa-solid fa-code"></i></button>
+          <button type="button" class="lang-btn" data-lang="cpp" title="C++"><i class="fa-solid fa-code"></i></button>
+          <button type="button" class="lang-btn" data-lang="csharp" title="C#"><i class="fa-brands fa-csharp"></i></button>
+          <button type="button" class="lang-btn" data-lang="java" title="Java"><i class="fa-brands fa-java"></i></button>
+          <button type="button" class="lang-btn" data-lang="js" title="JavaScript"><i class="fa-brands fa-js"></i></button>
+          <button type="button" class="lang-btn" data-lang="ts" title="TypeScript"><i class="fa-brands fa-ts"></i></button>
+          <button type="button" class="lang-btn" data-lang="sql" title="SQL"><i class="fa-solid fa-database"></i></button>
+          <button type="button" class="lang-btn" data-lang="lua" title="Lua"><i class="fa-solid fa-moon"></i></button>
+          <button type="button" class="lang-btn" data-lang="go" title="Go"><i class="fa-brands fa-gofore"></i></button>
+          <button type="button" class="lang-btn" data-lang="lean" title="Lean"><i class="fa-solid fa-calculator"></i></button>
+          <button type="button" class="lang-btn" data-lang="r" title="R"><i class="fa-solid fa-chart-pie"></i></button>
+          <button type="button" class="lang-btn" data-lang="latex" title="LaTeX"><i class="fa-solid fa-file-code"></i></button>
+          <button type="button" class="lang-btn" data-lang="htmlcss" title="HTML/CSS"><i class="fa-brands fa-html5"></i></button>
+        </div>
+        <textarea id="code" rows="12" class="shell-code" placeholder="Write your code here..."></textarea>
+      </div>
       <button id="run" data-i18n="runButton" class="shell-btn shell-btn-primary">Run</button>
     </section>
 
