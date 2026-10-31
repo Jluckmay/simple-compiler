@@ -21,7 +21,9 @@ I18N = {
         "output_title": "Output",
         "error": "Error",
         "theme_toggle": "Toggle dark/light mode",
-        "lang_toggle": "Language (English / Português)"
+        "lang_toggle": "Language (English / Português)",
+        "noCode": "No code provided.",
+        "placeholder": "Write your code here..."
     },
     "pt": {
         "title": "Compilador Simples",
@@ -30,7 +32,9 @@ I18N = {
         "output_title": "Saída",
         "error": "Erro",
         "theme_toggle": "Alternar modo escuro/claro",
-        "lang_toggle": "Idioma (English / Português)"
+        "lang_toggle": "Idioma (English / Português)",
+        "noCode": "Nenhum código fornecido.",
+        "placeholder": "Escreva seu código aqui..."
     }
 }
 
@@ -302,7 +306,7 @@ st.session_state.compiler_lang = compiler_lang
 
 # Code editor (custom HTML component for Tab indentation support)
 code_html = f"""
-<textarea id="code" style="width:100%;height:260px;background:var(--code-bg,#0d0d0d);color:var(--text,#fff);border:1px solid var(--border,#222);border-radius:6px;font-family:'JetBrains Mono','Fira Code','Courier New',monospace;font-size:0.9rem;line-height:1.6;padding:1rem;resize:vertical;outline:none;">{st.session_state.code}</textarea>
+<textarea id="code" style="width:100%;height:260px;background:var(--code-bg,#0d0d0d);color:var(--text,#fff);border:1px solid var(--border,#222);border-radius:6px;font-family:'JetBrains Mono','Fira Code','Courier New',monospace;font-size:0.9rem;line-height:1.6;padding:1rem;resize:vertical;outline:none;" placeholder="{strings['placeholder']}">{st.session_state.code}</textarea>
 <script>
 const ta = document.getElementById('code');
 ta.addEventListener('keydown', function(e) {{
@@ -327,7 +331,7 @@ if new_code is not None:
 # Run button
 if st.button(strings["run_button"], key="run_btn", use_container_width=True):
     if not st.session_state.code.strip():
-        st.session_state.last_error = strings["error"] + ": " + "No code provided."
+        st.session_state.last_error = strings["error"] + ": " + strings["noCode"]
         st.session_state.last_output = ''
     else:
         cfg = LANG_CONFIG.get(st.session_state.compiler_lang)
