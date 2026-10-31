@@ -1,0 +1,7 @@
+{
+  "title": "Simple Compiler",
+  "languageLabel": "Language",
+  "runButton": "Run",
+  "outputTitle": "Output",
+  "error": "Error"
+}
