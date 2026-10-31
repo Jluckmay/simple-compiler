@@ -61,19 +61,6 @@ function toggleLang() {
   setLang(lang);
 }
 
-function selectLanguage(lang) {
-  // Update hidden input
-  document.getElementById('language').value = lang;
-  // Update button states
-  document.querySelectorAll('.lang-btn').forEach(b => {
-    if (b.dataset.lang === lang) {
-      b.classList.add('active');
-    } else {
-      b.classList.remove('active');
-    }
-  });
-}
-
 function handleCodeKeydown(e) {
   if (e.key === 'Tab') {
     e.preventDefault();
@@ -117,9 +104,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('lang-toggle').addEventListener('click', toggleLang);
   document.getElementById('code').addEventListener('keydown', handleCodeKeydown);
   document.getElementById('run').addEventListener('click', runCode);
-
-  // Language selection buttons
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', () => selectLanguage(btn.dataset.lang));
-  });
 });

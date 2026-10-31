@@ -132,55 +132,6 @@ header {visibility: hidden;}
   font-weight: 600;
 }
 
-/* Editor wrapper */
-.editor-wrapper {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
-/* Language sidebar */
-.lang-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.lang-btn {
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 6px;
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: var(--transition);
-  outline: none;
-  padding: 0.6rem;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.lang-btn:hover {
-  border-color: var(--text-dim);
-  color: var(--text);
-}
-
-.lang-btn.active {
-  border-color: var(--accent-red);
-  color: var(--accent-red);
-  background: rgba(255, 0, 0, 0.05);
-}
-
-.lang-btn i {
-  pointer-events: none;
-}
-
 /* Code editor */
 .shell-code {
   width: 100%;
@@ -338,29 +289,16 @@ with col3:
 # Language label
 st.markdown(f'<span class="card-label">{strings["language_label"]}</span>', unsafe_allow_html=True)
 
-# Editor wrapper with language sidebar + code editor
-st.markdown('<div class="editor-wrapper">', unsafe_allow_html=True)
-
-# Language sidebar with FontAwesome icons (matches web frontend)
-lang_items = ""
-for lang, icon_class, label in LANGUAGES:
-    active = ' active' if st.session_state.compiler_lang == lang else ''
-    lang_items += f'''
-    <button class="lang-btn{active}" onclick="Streamlit.setComponentValue('{lang}')" data-lang="{lang}" title="{label}">
-        <i class="{icon_class}"></i>
-    </button>
-    '''
-
-lang_html = f"""
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<div class="lang-sidebar">
-{lang_items}
-</div>
-"""
-selected_lang = components.html(lang_html, height=400)
-if selected_lang is not None:
-    st.session_state.compiler_lang = selected_lang
-    st.rerun()
+# Language selector (dropdown, matches web frontend)
+compiler_lang = st.selectbox(
+    strings["language_label"],
+    options=[lang for lang, _, _ in LANGUAGES],
+    format_func=lambda lang: next(label for _, _, label in LANGUAGES if lang == lang),
+    index=[lang for lang, _, _ in LANGUAGES].index(st.session_state.compiler_lang),
+    key="compiler_lang_select",
+    label_visibility="collapsed",
+)
+st.session_state.compiler_lang = compiler_lang
 
 # Code editor (custom HTML component for Tab indentation support)
 code_html = f"""
@@ -385,8 +323,6 @@ ta.addEventListener('input', function() {{
 new_code = components.html(code_html, height=300)
 if new_code is not None:
     st.session_state.code = new_code
-
-st.markdown('</div>', unsafe_allow_html=True)
 
 # Run button
 if st.button(strings["run_button"], key="run_btn", use_container_width=True):
