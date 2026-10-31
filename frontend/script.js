@@ -87,7 +87,7 @@ async function runCode() {
   const resultEl = document.getElementById('result');
   resultEl.textContent = '';
   try {
-    const resp = await fetch('http://localhost:5000/compile', {
+    const resp = await fetch('https://simple-compiler-ldj7.onrender.com/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, language }),
