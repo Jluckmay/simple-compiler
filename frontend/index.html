@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Compiler</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1 data-i18n="title">Simple Compiler</h1>
+    <div class="controls">
+      <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙/☀️</button>
+      <select id="lang-select" aria-label="Select language">
+        <option value="en" selected>English</option>
+        <option value="pt">Português</option>
+      </select>
+    </div>
+  </header>
+  <main>
+    <section class="editor">
+      <label for="language" data-i18n="languageLabel">Language</label>
+      <select id="language">
+        <option value="python">Python</option>
+        <option value="c">C</option>
+        <option value="cpp">C++</option>
+        <option value="csharp">C#</option>
+        <option value="java">Java</option>
+        <option value="js">JavaScript</option>
+        <option value="ts">TypeScript</option>
+        <option value="sql">SQL</option>
+        <option value="lua">Lua</option>
+        <option value="go">Go</option>
+        <option value="lean">Lean</option>
+        <option value="r">R</option>
+        <option value="latex">LaTeX</option>
+        <option value="htmlcss">HTML/CSS</option>
+      </select>
+      <textarea id="code" rows="12" placeholder="Write your code here..."></textarea>
+      <button id="run" data-i18n="runButton">Run</button>
+    </section>
+    <section class="output" aria-live="polite">
+      <h2 data-i18n="outputTitle">Output</h2>
+      <pre id="result"></pre>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
