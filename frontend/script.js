@@ -26,7 +26,7 @@ function setLang(lang) {
 function loadLangFromPref() {
   const stored = localStorage.getItem('lang') || navigator.language.slice(0,2);
   const lang = stored.startsWith('pt') ? 'pt' : 'en';
-  document.getElementById('lang-select').value = lang;
+  document.getElementById('lang-toggle').textContent = lang === 'pt' ? 'PT' : 'EN';
   setLang(lang);
 }
 
@@ -36,11 +36,56 @@ function toggleTheme() {
   const next = current === 'light' ? 'dark' : 'light';
   html.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
+  updateThemeIcon();
 }
 
 function loadThemeFromPref() {
   const stored = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.setAttribute('data-theme', stored);
+  updateThemeIcon();
+}
+
+function updateThemeIcon() {
+  const btn = document.getElementById('theme-toggle');
+  const theme = document.documentElement.getAttribute('data-theme');
+  btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+}
+
+function toggleLang() {
+  const btn = document.getElementById('lang-toggle');
+  const current = btn.textContent.trim();
+  const next = current === 'EN' ? 'PT' : 'EN';
+  btn.textContent = next;
+  const lang = next === 'PT' ? 'pt' : 'en';
+  localStorage.setItem('lang', lang);
+  setLang(lang);
+}
+
+function selectLanguage(lang) {
+  // Update hidden input
+  document.getElementById('language').value = lang;
+  // Update button states
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    if (b.dataset.lang === lang) {
+      b.classList.add('active');
+    } else {
+      b.classList.remove('active');
+    }
+  });
+}
+
+function handleCodeKeydown(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const textarea = e.target;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    // Insert 2 spaces at cursor
+    const value = textarea.value;
+    textarea.value = value.substring(0, start) + '  ' + value.substring(end);
+    // Move cursor after inserted spaces
+    textarea.selectionStart = textarea.selectionEnd = start + 2;
+  }
 }
 
 async function runCode() {
@@ -56,7 +101,7 @@ async function runCode() {
     });
     const data = await resp.json();
     if (data.error) {
-      resultEl.textContent = i18n[document.getElementById('lang-select').value].error + ': ' + data.error;
+      resultEl.textContent = i18n[document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en'].error + ': ' + data.error;
     } else {
       resultEl.textContent = data.output;
     }
@@ -69,10 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadThemeFromPref();
   loadLangFromPref();
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-  document.getElementById('lang-select').addEventListener('change', (e) => {
-    const lang = e.target.value;
-    localStorage.setItem('lang', lang);
-    setLang(lang);
-  });
+  document.getElementById('lang-toggle').addEventListener('click', toggleLang);
+  document.getElementById('code').addEventListener('keydown', handleCodeKeydown);
   document.getElementById('run').addEventListener('click', runCode);
+
+  // Language selection buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectLanguage(btn.dataset.lang));
+  });
 });
