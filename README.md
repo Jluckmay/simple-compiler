@@ -112,6 +112,8 @@ All tests pass (`3 passed`). The tests cover:
 ## Streamlit Interface (Local GUI)
 A lightweight local GUI built with **Streamlit** mirrors the web UI, allowing you to run the compiler without a browser.
 
+The Streamlit app is **self-contained** — it imports the execution logic directly from the backend, so you do **not** need to start the Flask API separately.
+
 ```bash
 # 1️⃣ Install Streamlit UI dependencies
 cd streamlit_app
@@ -119,13 +121,10 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2️⃣ Ensure the backend API is running (see "Running the Backend")
-python ../backend/app.py   # in a separate terminal
-
-# 3️⃣ Launch the Streamlit app
+# 2️⃣ Launch the Streamlit app (no backend server needed)
 streamlit run app.py
 ```
-The app will open at `http://localhost:8501`. It supports the same language selector, dark/light mode, and Portuguese/English UI toggle.
+The app will open at `http://localhost:8501`. It supports the same language selector, dark/light mode, and Portuguese/English UI toggle. Docker is optional — if unavailable, the app falls back to a local subprocess runner with the same timeout and output limits.
 
 ```bash
 # Backend unit tests (pytest)

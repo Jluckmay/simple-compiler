@@ -1,6 +1,13 @@
 import streamlit as st
-import requests
-import json
+import os
+import sys
+import tempfile
+
+# ---------------------------------------------------------------------------
+# Import execution logic from backend (no separate server required)
+# ---------------------------------------------------------------------------
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+from app import execute_code, LANG_CONFIG  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # UI strings (i18n)
@@ -245,22 +252,22 @@ if st.button(strings["run_button"]):
     if not code.strip():
         st.error(strings["error"] + ": " + "No code provided.")
     else:
-        # Send request to local backend API (expects it to be running on port 5000)
-        try:
-            resp = requests.post(
-                "http://127.0.0.1:5000/compile",
-                json={"code": code, "language": compiler_lang},
-                timeout=10,
-            )
-            if resp.status_code != 200:
-                st.error(f"{strings['error']}: HTTP {resp.status_code}")
-            else:
-                data = resp.json()
-                if data.get('error'):
-                    st.error(f"{strings['error']}: {data['error']}")
+        # Execute code directly using backend logic (no separate server required)
+        cfg = LANG_CONFIG.get(compiler_lang)
+        if not cfg:
+            st.error(f"{strings['error']}: Language {compiler_lang} not supported.")
+        else:
+            ext = cfg.get('ext', '')
+            fd, src_path = tempfile.mkstemp(suffix=ext)
+            os.write(fd, code.encode())
+            os.close(fd)
+            try:
+                stdout, stderr = execute_code(cfg, src_path)
+                if stderr:
+                    st.error(f"{strings['error']}: {stderr}")
                 else:
                     st.subheader(strings["output_title"])
-                    st.code(data.get('output', ''), language=compiler_lang)
-        except Exception as e:
-            st.error(f"{strings['error']}: {e}")
+                    st.code(stdout, language=compiler_lang)
+            except Exception as e:
+                st.error(f"{strings['error']}: {e}")
 st.markdown('</div>', unsafe_allow_html=True)
