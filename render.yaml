@@ -1,7 +1,7 @@
 services:
   - type: web
     name: simple-compiler-backend
-    env: docker
+    runtime: docker
     repo: https://github.com/Jluckmay/simple-compiler
     dockerfilePath: backend/Dockerfile
     dockerContext: .
