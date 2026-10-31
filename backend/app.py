@@ -166,6 +166,9 @@ def execute_code(cfg, src_path):
         compile_cmd = cfg['compile'](src_path, out_path)
         if docker_available():
             _, compile_err = run_in_container(cfg['image'], compile_cmd, src_path=src_path, workdir="/code")
+            if compile_err.lower().startswith('container error'):
+                # Docker not functional – fallback to subprocess
+                _, compile_err = run_subprocess(compile_cmd)
         else:
             _, compile_err = run_subprocess(compile_cmd)
         if compile_err:
