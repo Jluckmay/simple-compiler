@@ -3,7 +3,7 @@ import subprocess, tempfile, os, shutil, re
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000"])
+CORS(app, origins=["https://jluckmay.github.io", "https://simple-compiler-ldj7.onrender.com", "http://localhost:5000", "http://127.0.0.1:5000"])
 
 # Maximum accepted code size (100 KB) to prevent resource exhaustion
 MAX_CODE_SIZE = 100 * 1024
