@@ -283,22 +283,6 @@ O frontend está hospedado no GitHub Pages em:
 
 Basta abrir o link no navegador — nenhuma instalação ou servidor backend é necessário.
 
-### Render (backend)
-
-**English:**
-1. In Render, create a **Web Service**.
-2. Connect it to this repository.
-3. Choose **Docker** as the environment; Render will build the `backend/Dockerfile`.
-4. Set the start command to `python app.py` (Render uses the Docker CMD from the Dockerfile).
-5. The service will be exposed at `https://<app>.onrender.com/compile` – update the frontend `script.js` base URL if needed.
-
-**Português:**
-1. No Render, crie um **Web Service**.
-2. Conecte-o a este repositório.
-3. Escolha **Docker** como o ambiente; o Render construirá o `backend/Dockerfile`.
-4. Defina o comando de inicialização como `python app.py` (o Render usa o CMD do Docker do Dockerfile).
-5. O serviço será exposto em `https://<app>.onrender.com/compile` – atualize a URL base do `script.js` do frontend se necessário.
-
 ---
 
 ## License / Licença
