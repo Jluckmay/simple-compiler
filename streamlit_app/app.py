@@ -40,7 +40,7 @@ def toggle_theme():
     # Store theme flag in session_state; True = dark, False = light
     st.session_state.dark_mode = not st.session_state.get('dark_mode', False)
     # Force a rerun to apply CSS
-    st.experimental_rerun()
+    st.rerun()
 
 def apply_theme():
     dark = st.session_state.get('dark_mode', False)

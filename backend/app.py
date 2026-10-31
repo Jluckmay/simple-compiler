@@ -3,7 +3,10 @@ import subprocess, tempfile, os, shutil
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000"])
+
+# Maximum accepted code size (100 KB) to prevent resource exhaustion
+MAX_CODE_SIZE = 100 * 1024
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -38,7 +41,7 @@ LANG_CONFIG = {
     "java": {
         "image": "openjdk:21",
         "compile": lambda src, _: ["javac", src],
-        "run": lambda src: ["java", src.replace('.java', '')],
+        "run": lambda src: ["java", os.path.basename(src).replace('.java', '')],
         "ext": ".java",
     },
     "js": {
@@ -53,7 +56,7 @@ LANG_CONFIG = {
     },
     "sql": {
         "image": "nouchka/sqlite3",
-        "run": lambda src: ["sqlite3", ":memory:", "<", src],
+        "run": lambda src: ["sqlite3", ":memory:"],
         "ext": ".sql",
     },
     "lua": {
@@ -114,7 +117,7 @@ def run_subprocess(cmd, input_data=None):
     except Exception as e:
         return "", f"Internal error: {e}"
 
-def run_in_container(image, cmd, src_path=None, workdir=None):
+def run_in_container(image, cmd, src_path=None, workdir=None, input_data=None):
     """Run a command inside a Docker container with strict resource limits.
     Returns (stdout, stderr). If Docker is not available this function should not be called.
     """
@@ -137,6 +140,7 @@ def run_in_container(image, cmd, src_path=None, workdir=None):
     try:
         res = subprocess.run(
             docker_cmd,
+            input=input_data,
             capture_output=True,
             text=True,
             timeout=TIMEOUT,
@@ -152,6 +156,10 @@ def execute_code(cfg, src_path):
     otherwise fall back to the local subprocess runner.
     Returns (stdout, stderr).
     """
+    # Read source file content for languages that need it on stdin (e.g. SQL)
+    with open(src_path, 'r', encoding='utf-8', errors='replace') as f:
+        src_content = f.read()
+
     # Compilation step for compiled languages
     if cfg.get('compile'):
         out_path = src_path + "_out"
@@ -164,53 +172,37 @@ def execute_code(cfg, src_path):
             os.remove(src_path)
             return "", compile_err
         exec_cmd = cfg['run'](out_path)
+        exec_input = None
     else:
         exec_cmd = cfg['run'](src_path)
+        # SQL reads the script from stdin instead of a file argument
+        exec_input = src_content.encode() if language_uses_stdin(cfg) else None
+
     # Execution – try Docker first, fallback on error
     if docker_available():
-        out, err = run_in_container(cfg['image'], exec_cmd, src_path=src_path, workdir="/code")
+        out, err = run_in_container(cfg['image'], exec_cmd, src_path=src_path, workdir="/code", input_data=exec_input)
         if err.lower().startswith('container error'):
             # Docker not functional – fallback to subprocess
-            out, err = run_subprocess(exec_cmd)
+            out, err = run_subprocess(exec_cmd, input_data=exec_input)
     else:
-        out, err = run_subprocess(exec_cmd)
+        out, err = run_subprocess(exec_cmd, input_data=exec_input)
     # Clean up temporary artefacts
     if os.path.exists(src_path):
         os.remove(src_path)
     if cfg.get('compile') and os.path.exists(src_path + "_out"):
         os.remove(src_path + "_out")
     return out, err
-    """Compile (if needed) and run the user code using Docker when possible,
-    otherwise fall back to the local subprocess runner.
-    Returns (stdout, stderr).
-    """
-    # Compilation step for compiled languages
-    if cfg.get('compile'):
-        out_path = src_path + "_out"
-        # Compile
-        compile_cmd = cfg['compile'](src_path, out_path)
-        if docker_available():
-            _, compile_err = run_in_container(cfg['image'], compile_cmd, src_path=src_path, workdir="/code")
-        else:
-            _, compile_err = run_subprocess(compile_cmd)
-        if compile_err:
-            # cleanup source file before returning
-            os.remove(src_path)
-            return "", compile_err
-        exec_cmd = cfg['run'](out_path)
-    else:
-        exec_cmd = cfg['run'](src_path)
-    # Execution
-    if docker_available():
-        out, err = run_in_container(cfg['image'], exec_cmd, src_path=src_path, workdir="/code")
-    else:
-        out, err = run_subprocess(exec_cmd)
-    # Clean up temporary artefacts
-    if os.path.exists(src_path):
-        os.remove(src_path)
-    if cfg.get('compile') and os.path.exists(src_path + "_out"):
-        os.remove(src_path + "_out")
-    return out, err
+
+
+def language_uses_stdin(cfg):
+    """Return True if the language reads its program from stdin rather than a file argument."""
+    run_cmd = cfg.get('run', lambda _: [])
+    # Probe with a dummy path to inspect the command structure
+    try:
+        cmd = run_cmd("/dev/null")
+    except Exception:
+        cmd = []
+    return any(part == ":memory:" for part in cmd)
 
 # ---------------------------------------------------------------------------
 # API endpoint
@@ -220,6 +212,9 @@ def compile_code():
     data = request.get_json(silent=True) or {}
     code = data.get('code', '')
     language = data.get('language', '').lower()
+    # Reject oversized payloads
+    if len(code.encode('utf-8')) > MAX_CODE_SIZE:
+        return jsonify({"error": f"Code exceeds maximum size of {MAX_CODE_SIZE // 1024} KB"}), 413
     cfg = LANG_CONFIG.get(language)
     if not cfg:
         return jsonify({"error": f"Language {language} not supported"}), 400
