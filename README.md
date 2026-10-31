@@ -19,7 +19,7 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - [Running the Backend / Executando o Backend](#running-the-backend--executando-o-backend)
 - [Testing / Testes](#testing--testes)
 - [Streamlit Interface (Local GUI) / Interface Streamlit (GUI Local)](#streamlit-interface-local-gui--interface-streamlit-gui-local)
-- [Deployment / Implantação](#deployment--implantação)
+- [Acesso à página web / Web page access](#acesso-à-página-web--web-page-access)
   - [GitHub Pages (frontend)](#github-pages-frontend)
   - [Render (backend)](#render-backend)
 - [License / Licença](#license--licença)
@@ -269,17 +269,19 @@ O aplicativo será aberto em `http://localhost:8501`. Ele suporta o mesmo seleto
 
 ---
 
-## Deployment / Implantação
-
-### GitHub Pages (frontend)
+## Acesso à página web / Web page access
 
 **English:**
-1. Push the `frontend/` folder to a `gh-pages` branch (or enable GitHub Pages from the `main` branch settings with `/frontend`).
-2. The site is automatically served at `https://<username>.github.io/<repo>/`.
+The frontend is hosted on GitHub Pages at:
+`https://jluckmay.github.io/simple-compiler/`
+
+Just open the link in your browser — no installation or backend server is required.
 
 **Português:**
-1. Envie a pasta `frontend/` para um branch `gh-pages` (ou habilite o GitHub Pages nas configurações do branch `main` com `/frontend`).
-2. O site é servido automaticamente em `https://<usuario>.github.io/<repo>/`.
+O frontend está hospedado no GitHub Pages em:
+`https://jluckmay.github.io/simple-compiler/`
+
+Basta abrir o link no navegador — nenhuma instalação ou servidor backend é necessário.
 
 ### Render (backend)
 
