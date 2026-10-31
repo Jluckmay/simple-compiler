@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import subprocess, tempfile, os, shutil
+import subprocess, tempfile, os, shutil, re
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -167,8 +167,9 @@ def execute_code(cfg, src_path):
         if docker_available():
             _, compile_err = run_in_container(cfg['image'], compile_cmd, src_path=src_path, workdir="/code")
             if compile_err.lower().startswith('container error'):
-                # Docker not functional – fallback to subprocess
-                _, compile_err = run_subprocess(compile_cmd)
+                # Docker is available but not functional – do NOT fall back to host subprocess
+                os.remove(src_path)
+                return "", "Compilation environment unavailable. Docker container failed to start."
         else:
             _, compile_err = run_subprocess(compile_cmd)
         if compile_err:
@@ -185,8 +186,9 @@ def execute_code(cfg, src_path):
     if docker_available():
         out, err = run_in_container(cfg['image'], exec_cmd, src_path=src_path, workdir="/code", input_data=exec_input)
         if err.lower().startswith('container error'):
-            # Docker not functional – fallback to subprocess
-            out, err = run_subprocess(exec_cmd, input_data=exec_input)
+            # Docker is available but not functional – do NOT fall back to host subprocess
+            # Return the container error instead of executing on the host
+            return "", "Execution environment unavailable. Docker container failed to start."
     else:
         out, err = run_subprocess(exec_cmd, input_data=exec_input)
     # Clean up temporary artefacts
@@ -208,6 +210,74 @@ def language_uses_stdin(cfg):
     return any(part == ":memory:" for part in cmd)
 
 # ---------------------------------------------------------------------------
+# Security: dangerous patterns that must be rejected
+# ---------------------------------------------------------------------------
+DANGEROUS_PATTERNS = [
+    # Python dangerous operations
+    r'import\s+os',
+    r'import\s+subprocess',
+    r'import\s+sys',
+    r'__import__\s*\(',
+    r'eval\s*\(',
+    r'exec\s*\(',
+    r'compile\s*\(',
+    r'open\s*\(',
+    r'os\.system\s*\(',
+    r'os\.popen\s*\(',
+    r'os\.exec',
+    r'os\.spawn',
+    r'subprocess\.',
+    r'socket\.',
+    r'urllib\.',
+    r'requests\.',
+    r'ftplib\.',
+    r'paramiko\.',
+    r'ssh',
+    r'shutil\.',
+    r'glob\.',
+    r'pathlib\.',
+    r'ctypes\.',
+    r'marshal\.',
+    r'pickle\.',
+    r'shelve\.',
+    r'dbm\.',
+    r'sqlite3\.',
+    # Shell metacharacters for command injection
+    r';\s*rm\s',
+    r';\s*curl\s',
+    r';\s*wget\s',
+    r'&&\s*rm\s',
+    r'&&\s*curl\s',
+    r'&&\s*wget\s',
+    r'\|\s*cat\s',
+    r'\|\s*nc\s',
+    r'`',
+    r'\$\(',
+]
+
+import re
+
+def contains_dangerous_pattern(code: str) -> tuple[bool, str]:
+    """Check if code contains dangerous patterns. Returns (is_dangerous, reason)."""
+    for pattern in DANGEROUS_PATTERNS:
+        if re.search(pattern, code, re.IGNORECASE):
+            return True, f"Potentially dangerous pattern detected: {pattern}"
+    return False, ""
+
+def sanitize_error(message: str) -> str:
+    """Remove system paths and sensitive info from error messages."""
+    # Replace Windows absolute paths
+    message = re.sub(r'[A-Za-z]:\\.*?(?=\s|$)', '[PATH]', message)
+    # Replace Unix absolute paths
+    message = re.sub(r'/[^\s]*?(?=\s|$)', '[PATH]', message)
+    # Replace temp file paths
+    message = re.sub(r'tmp[a-zA-Z0-9_]*', '[TMPFILE]', message)
+    # Replace user home directories
+    message = re.sub(r'Users/[^\s/]*', '[USER]', message)
+    return message
+
+
+# ---------------------------------------------------------------------------
 # API endpoint
 # ---------------------------------------------------------------------------
 @app.route('/compile', methods=['POST'])
@@ -221,6 +291,10 @@ def compile_code():
     cfg = LANG_CONFIG.get(language)
     if not cfg:
         return jsonify({"error": f"Language {language} not supported"}), 400
+    # Security: reject dangerous patterns
+    is_dangerous, reason = contains_dangerous_pattern(code)
+    if is_dangerous:
+        return jsonify({"error": f"Security: {reason}"}), 400
     # Write source to a temporary file with proper extension
     ext = cfg.get('ext', '')
     fd, src_path = tempfile.mkstemp(suffix=ext)
@@ -228,6 +302,9 @@ def compile_code():
     os.close(fd)
     # Execute safely
     stdout, stderr = execute_code(cfg, src_path)
+    # Sanitize error messages to not reveal system paths
+    if stderr:
+        stderr = sanitize_error(stderr)
     return jsonify({"output": stdout, "error": stderr})
 
 if __name__ == '__main__':
