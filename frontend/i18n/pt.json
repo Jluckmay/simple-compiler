@@ -3,5 +3,6 @@
   "languageLabel": "Linguagem",
   "runButton": "Executar",
   "outputTitle": "Saída",
-  "error": "Erro"
+  "error": "Erro",
+  "placeholder": "Escreva seu código aqui..."
 }
