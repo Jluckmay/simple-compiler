@@ -197,60 +197,6 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
 }
 
-/* ===== Editor Wrapper ===== */
-.editor-wrapper {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
-/* ===== Language Sidebar ===== */
-.lang-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.lang-btn {
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 6px;
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: var(--transition);
-  outline: none;
-  padding: 0.6rem;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.lang-btn:hover {
-  border-color: var(--text-dim);
-  color: var(--text);
-}
-
-.lang-btn.active {
-  border-color: var(--accent-red);
-  color: var(--accent-red);
-  background: rgba(255, 0, 0, 0.05);
-}
-
-.lang-btn:focus-visible {
-  border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
-}
-
-.lang-btn i {
-  pointer-events: none;
-}
-
 /* ===== Buttons ===== */
 .shell-btn {
   border: none;
