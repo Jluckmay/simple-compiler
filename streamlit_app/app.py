@@ -39,10 +39,12 @@ I18N = {
 # ---------------------------------------------------------------------------
 MODERN_CSS = """
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0a0a0a;
   --surface: #111111;
+  --surface-hover: #1a1a1a;
   --border: #222222;
   --accent-red: #ff0000;
   --accent-red-hover: #ff3333;
@@ -51,7 +53,10 @@ MODERN_CSS = """
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
   --code-bg: #0d0d0d;
+  --output-bg: #0d0d0d;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --radius: 8px;
+  --transition: all 0.2s ease;
 }
 
 .stApp {
@@ -62,7 +67,13 @@ MODERN_CSS = """
 .block-container {
   padding-top: 2rem;
   max-width: 960px;
+  margin: 0 auto;
 }
+
+/* Hide Streamlit branding */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
 
 /* Header */
 .app-header {
@@ -77,14 +88,14 @@ MODERN_CSS = """
 .app-prompt {
   color: var(--accent-red);
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   line-height: 1;
 }
 
 .app-slash {
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   line-height: 1;
 }
 
@@ -102,7 +113,7 @@ MODERN_CSS = """
   border-radius: var(--radius);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow);
 }
 
 .card-label {
@@ -113,6 +124,12 @@ MODERN_CSS = """
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
   display: block;
+}
+
+.card-title {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 /* Editor wrapper */
@@ -138,7 +155,7 @@ MODERN_CSS = """
   border-radius: 6px;
   font-size: 1.25rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   outline: none;
   padding: 0.6rem;
   width: 44px;
@@ -164,7 +181,87 @@ MODERN_CSS = """
   pointer-events: none;
 }
 
-/* Hide Streamlit branding */
+/* Code editor */
+.shell-code {
+  width: 100%;
+  min-height: 240px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 1rem;
+  resize: vertical;
+  outline: none;
+  transition: var(--transition);
+}
+
+/* Output */
+.shell-output {
+  background: var(--output-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 1rem;
+  min-height: 120px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Buttons */
+.stButton > button {
+  background: var(--accent-red) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  transition: var(--transition) !important;
+  width: 100% !important;
+  padding: 0.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+.stButton > button:hover {
+  background: var(--accent-red-hover) !important;
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.2) !important;
+}
+
+.stButton > button[kind="secondary"] {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  width: auto !important;
+  padding: 0.6rem !important;
+  font-size: 1.25rem !important;
+}
+
+.stButton > button[kind="secondary"]:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--text-dim) !important;
+  color: var(--text) !important;
+}
+
+/* Responsive */
+@media (min-width: 640px) {
+  .editor-card,
+  .output-card {
+    flex: 1;
+  }
+}
+</style>
+"""
+
+LIGHT_CSS = """
+<style>
+.stApp { background: #fafafa; color: #111827; }
+.stCard { background: #ffffff; border: 1px solid #e5e7eb; border-top: 3px solid #dc2626; }
+.card-label { color: #6b7280; }
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
@@ -182,29 +279,8 @@ def get_strings():
     return I18N[get_locale()]
 
 def toggle_theme():
-    # Store theme flag in session_state; True = dark, False = light
     st.session_state.dark_mode = not st.session_state.get('dark_mode', False)
-    # Force a rerun to apply CSS
     st.rerun()
-
-def apply_theme():
-    dark = st.session_state.get('dark_mode', False)
-    if dark:
-        st.markdown(MODERN_CSS, unsafe_allow_html=True)
-    else:
-        st.markdown(
-            """
-            <style>
-            .stApp { background: #fafafa; color: #111827; }
-            .stCard { background: #ffffff; border: 1px solid #e5e7eb; border-top: 3px solid #dc2626; }
-            .card-label { color: #6b7280; }
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
 
 # ---------------------------------------------------------------------------
 # Streamlit page configuration
@@ -213,7 +289,6 @@ st.set_page_config(page_title="Simple Compiler", layout="centered")
 
 # Initialize session state defaults
 if 'locale' not in st.session_state:
-    # Detect browser language from query params if present, fallback to en
     st.session_state.locale = 'en'
 if 'dark_mode' not in st.session_state:
     st.session_state.dark_mode = True
@@ -221,8 +296,16 @@ if 'code' not in st.session_state:
     st.session_state.code = ''
 if 'compiler_lang' not in st.session_state:
     st.session_state.compiler_lang = 'python'
+if 'last_output' not in st.session_state:
+    st.session_state.last_output = ''
+if 'last_error' not in st.session_state:
+    st.session_state.last_error = ''
 
-apply_theme()
+dark = st.session_state.dark_mode
+if dark:
+    st.markdown(MODERN_CSS, unsafe_allow_html=True)
+else:
+    st.markdown(LIGHT_CSS, unsafe_allow_html=True)
 
 strings = get_strings()
 
@@ -237,59 +320,47 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-col1, col2 = st.columns([3, 1])
+# Controls row: theme toggle + language toggle
+col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
-    pass  # title already rendered in header
+    pass
 with col2:
-    theme_icon = '🌙' if st.session_state.dark_mode else '☀️'
+    theme_icon = '🌙' if dark else '☀️'
     if st.button(theme_icon, key="theme_btn", help=strings["theme_toggle"]):
         toggle_theme()
-
-# Language toggle (EN/PT)
-lang_col1, lang_col2 = st.columns([3, 1])
-with lang_col1:
-    pass
-with lang_col2:
+with col3:
     ui_btn_label = st.session_state.locale.upper()
     if st.button(ui_btn_label, key="lang_btn", help=strings["lang_toggle"]):
-        next_locale = 'pt' if st.session_state.locale == 'en' else 'en'
-        st.session_state.locale = next_locale
+        st.session_state.locale = 'pt' if st.session_state.locale == 'en' else 'en'
         strings = get_strings()
         st.rerun()
 
-# Language selection sidebar with FontAwesome icons (matches web frontend)
-LANGUAGES = [
-    ("python", "fa-brands fa-python", "Python"),
-    ("c", "fa-solid fa-code", "C"),
-    ("cpp", "fa-solid fa-code", "C++"),
-    ("csharp", "fa-brands fa-csharp", "C#"),
-    ("java", "fa-brands fa-java", "Java"),
-    ("js", "fa-brands fa-js", "JavaScript"),
-    ("ts", "fa-brands fa-ts", "TypeScript"),
-    ("sql", "fa-solid fa-database", "SQL"),
-    ("lua", "fa-solid fa-moon", "Lua"),
-    ("go", "fa-brands fa-gofore", "Go"),
-    ("lean", "fa-solid fa-calculator", "Lean"),
-    ("r", "fa-solid fa-chart-pie", "R"),
-    ("latex", "fa-solid fa-file-code", "LaTeX"),
-    ("htmlcss", "fa-brands fa-html5", "HTML/CSS"),
-]
-
+# Language label
 st.markdown(f'<span class="card-label">{strings["language_label"]}</span>', unsafe_allow_html=True)
 
 # Editor wrapper with language sidebar + code editor
 st.markdown('<div class="editor-wrapper">', unsafe_allow_html=True)
 
-# Language sidebar
-st.markdown('<div class="lang-sidebar">', unsafe_allow_html=True)
+# Language sidebar with FontAwesome icons (matches web frontend)
+lang_items = ""
 for lang, icon_class, label in LANGUAGES:
-    is_active = st.session_state.compiler_lang == lang
-    btn_type = "primary" if is_active else "secondary"
-    icon_html = f'<i class="{icon_class}"></i>'
-    if st.button(icon_html, key=f"lang_{lang}", help=label, type=btn_type):
-        st.session_state.compiler_lang = lang
-        st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
+    active = ' active' if st.session_state.compiler_lang == lang else ''
+    lang_items += f'''
+    <button class="lang-btn{active}" onclick="Streamlit.setComponentValue('{lang}')" data-lang="{lang}" title="{label}">
+        <i class="{icon_class}"></i>
+    </button>
+    '''
+
+lang_html = f"""
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<div class="lang-sidebar">
+{lang_items}
+</div>
+"""
+selected_lang = components.html(lang_html, height=400)
+if selected_lang is not None:
+    st.session_state.compiler_lang = selected_lang
+    st.rerun()
 
 # Code editor (custom HTML component for Tab indentation support)
 code_html = f"""
@@ -320,11 +391,13 @@ st.markdown('</div>', unsafe_allow_html=True)
 # Run button
 if st.button(strings["run_button"], key="run_btn", use_container_width=True):
     if not st.session_state.code.strip():
-        st.error(strings["error"] + ": " + "No code provided.")
+        st.session_state.last_error = strings["error"] + ": " + "No code provided."
+        st.session_state.last_output = ''
     else:
         cfg = LANG_CONFIG.get(st.session_state.compiler_lang)
         if not cfg:
-            st.error(f"{strings['error']}: Language {st.session_state.compiler_lang} not supported.")
+            st.session_state.last_error = f"{strings['error']}: Language {st.session_state.compiler_lang} not supported."
+            st.session_state.last_output = ''
         else:
             ext = cfg.get('ext', '')
             fd, src_path = tempfile.mkstemp(suffix=ext)
@@ -332,10 +405,18 @@ if st.button(strings["run_button"], key="run_btn", use_container_width=True):
             os.close(fd)
             try:
                 stdout, stderr = execute_code(cfg, src_path)
-                if stderr:
-                    st.error(f"{strings['error']}: {stderr}")
-                else:
-                    st.subheader(strings["output_title"])
-                    st.code(stdout, language=st.session_state.compiler_lang)
+                st.session_state.last_error = stderr
+                st.session_state.last_output = stdout
             except Exception as e:
-                st.error(f"{strings['error']}: {e}")
+                st.session_state.last_error = f"{strings['error']}: {e}"
+                st.session_state.last_output = ''
+
+# Output card (matches web frontend)
+if st.session_state.last_output or st.session_state.last_error:
+    st.markdown('<div class="stCard">', unsafe_allow_html=True)
+    st.markdown(f'<h2 class="card-title">{strings["output_title"]}</h2>', unsafe_allow_html=True)
+    if st.session_state.last_error:
+        st.error(f"{strings['error']}: {st.session_state.last_error}")
+    if st.session_state.last_output:
+        st.code(st.session_state.last_output, language=st.session_state.compiler_lang)
+    st.markdown('</div>', unsafe_allow_html=True)
