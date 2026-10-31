@@ -6,6 +6,7 @@ const i18n = {
     runButton: "Run",
     outputTitle: "Output",
     error: "Error",
+    placeholder: "Write your code here...",
   },
   pt: {
     title: "Compilador Simples",
@@ -13,6 +14,7 @@ const i18n = {
     runButton: "Executar",
     outputTitle: "Saída",
     error: "Erro",
+    placeholder: "Escreva seu código aqui...",
   },
 };
 
