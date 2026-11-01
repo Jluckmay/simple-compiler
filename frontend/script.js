@@ -81,13 +81,21 @@ function handleCodeKeydown(e) {
   }
 }
 
+function getApiUrl() {
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'http://localhost:5000/compile';
+  }
+  return 'https://simple-compiler-ldj7.onrender.com/compile';
+}
+
 async function runCode() {
   const code = document.getElementById('code').value;
   const language = document.getElementById('language').value;
   const resultEl = document.getElementById('result');
   resultEl.textContent = '';
   try {
-    const resp = await fetch('https://simple-compiler-ldj7.onrender.com/compile', {
+    const resp = await fetch(getApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, language }),
