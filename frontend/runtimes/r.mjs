@@ -1,7 +1,7 @@
 // runtimes/r.mjs — Execução R via webr (R compilado para WASM).
 // Execução em memória; sem acesso a rede ou sistema de arquivos do host.
 // Usa a classe WebR do webr para instanciar um ambiente R e executar código.
-// Captura saída via override de globalThis.print (webr chama print do JS).
+// Captura saída via interceptação de console.log (webr envia saída R para console).
 
 import { WebR } from 'https://cdn.jsdelivr.net/npm/webr@0.4.2/+esm';
 
@@ -23,19 +23,20 @@ async function init() {
 export async function run(code) {
   await init();
   const output = [];
-  try {
-    const originalPrint = globalThis.print;
-    globalThis.print = (...args) => {
-      output.push(args.map(String).join(" "));
-    };
-    try {
-      await r.evalR(code);
-    } finally {
-      globalThis.print = originalPrint;
+  const originalLog = console.log;
+  console.log = (...args) => {
+    const msg = args.map(String).join(" ");
+    // Captura saída do R (webr envia como "[log] [1] 2" ou similar)
+    if (msg.includes("[1]") || msg.match(/^\[/)) {
+      output.push(msg.replace(/^\[log\]\s*/, ""));
     }
-    const text = output.join("\n");
-    return { output: text, error: null };
-  } catch (err) {
-    return { output: output.join("\n"), error: err.message || String(err) };
+    originalLog.apply(console, args);
+  };
+  try {
+    await r.evalR(code);
+  } finally {
+    console.log = originalLog;
   }
+  const text = output.join("\n");
+  return { output: text, error: null };
 }
