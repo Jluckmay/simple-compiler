@@ -231,8 +231,7 @@ async function runCode() {
     const key = runtimeKey(language);
     if (!WASM_LANGUAGES.has(key)) {
       resultEl.textContent = t(langKey, 'error') + ': ' +
-        `A linguagem '${language}' requer um servidor backend para execução. ` +
-        `O modo WASM suporta: Python, JavaScript, TypeScript, Lua, SQL e R.`;
+        `A linguagem '${language}' não é suportada no modo WASM.`;
       return;
     }
 
