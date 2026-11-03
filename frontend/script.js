@@ -1,4 +1,7 @@
-// script.js
+// script.js — Frontend WASM (sem servidor backend).
+// A execução de código Python roda dentro de um Web Worker via Pyodide (WASM),
+// isolada da thread principal e protegida por múltiplas camadas de segurança.
+
 const i18n = {
   en: {
     title: "Simple Compiler",
@@ -7,6 +10,9 @@ const i18n = {
     outputTitle: "Output",
     error: "Error",
     placeholder: "Write your code here...",
+    wasmOnly: "WASM sandbox currently supports Python only. Other languages require a backend server.",
+    loadingPyodide: "Loading WASM runtime (Pyodide)...",
+    ready: "Ready",
   },
   pt: {
     title: "Compilador Simples",
@@ -15,8 +21,15 @@ const i18n = {
     outputTitle: "Saída",
     error: "Erro",
     placeholder: "Escreva seu código aqui...",
+    wasmOnly: "O sandbox WASM suporta apenas Python no momento. Outras linguagens requerem um servidor backend.",
+    loadingPyodide: "Carregando runtime WASM (Pyodide)...",
+    ready: "Pronto",
   },
 };
+
+const EXEC_TIMEOUT_MS = 5000; // tempo máximo de execução Python (ms)
+let pendingCalls = new Map();
+let msgCounter = 0;
 
 function setLang(lang) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -30,7 +43,7 @@ function setLang(lang) {
 }
 
 function loadLangFromPref() {
-  const stored = localStorage.getItem('lang') || navigator.language.slice(0,2);
+  const stored = localStorage.getItem('lang') || navigator.language.slice(0, 2);
   const lang = stored.startsWith('pt') ? 'pt' : 'en';
   document.getElementById('lang-toggle').textContent = lang === 'pt' ? 'PT' : 'EN';
   setLang(lang);
@@ -73,49 +86,147 @@ function handleCodeKeydown(e) {
     const textarea = e.target;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    // Insert 2 spaces at cursor
     const value = textarea.value;
     textarea.value = value.substring(0, start) + '  ' + value.substring(end);
-    // Move cursor after inserted spaces
     textarea.selectionStart = textarea.selectionEnd = start + 2;
   }
 }
 
-function getApiUrl() {
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') {
-    return 'http://localhost:5000/compile';
-  }
-  return 'https://simple-compiler-ldj7.onrender.com/compile';
+function createWorker() {
+  const w = new Worker('worker.js');
+  return new Promise((resolve, reject) => {
+    const initTimeout = setTimeout(() => {
+      w.terminate();
+      reject(new Error('Worker initialization timeout'));
+    }, 30000);
+
+    const onceReady = (event) => {
+      if ((event.data || {})._ready) {
+        w.removeEventListener('message', onceReady);
+        clearTimeout(initTimeout);
+        resolve(w);
+      }
+    };
+    w.addEventListener('message', onceReady);
+    w.onerror = (err) => {
+      clearTimeout(initTimeout);
+      w.terminate();
+      reject(new Error(`Worker error: ${err.message}`));
+    };
+  });
+}
+
+function runInWorker(code, timeoutMs = EXEC_TIMEOUT_MS) {
+  return new Promise(async (resolve, reject) => {
+    const id = ++msgCounter;
+    let worker = null;
+    let execTimer = null;
+
+    try {
+      worker = await createWorker();
+    } catch (err) {
+      reject(err);
+      return;
+    }
+
+    const cleanup = () => {
+      if (execTimer) clearTimeout(execTimer);
+      if (worker) worker.terminate();
+      pendingCalls.delete(id);
+    };
+
+    execTimer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Execution timed out after ${timeoutMs / 1000} seconds`));
+    }, timeoutMs);
+
+    pendingCalls.set(id, {
+      resolve: (result) => {
+        cleanup();
+        resolve(result);
+      },
+      reject: (err) => {
+        cleanup();
+        reject(err);
+      },
+    });
+
+    worker.onmessage = (event) => {
+      const { id: msgId, result, error } = event.data || {};
+      if (msgId !== id) return;
+      const cb = pendingCalls.get(id);
+      if (!cb) return;
+      pendingCalls.delete(id);
+      clearTimeout(execTimer);
+      worker.terminate();
+      if (error) cb.reject(new Error(error));
+      else cb.resolve(result);
+    };
+
+    worker.onerror = (err) => {
+      cleanup();
+      reject(new Error(`Worker error: ${err.message}`));
+    };
+
+    worker.postMessage({ code, id });
+  });
 }
 
 async function runCode() {
   const code = document.getElementById('code').value;
   const language = document.getElementById('language').value;
   const resultEl = document.getElementById('result');
+  const runBtn = document.getElementById('run');
   resultEl.textContent = '';
+
+  if (language !== 'python') {
+    const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
+    resultEl.textContent = i18n[langKey].wasmOnly;
+    return;
+  }
+
+  if (!code.trim()) {
+    resultEl.textContent = '';
+    return;
+  }
+
   try {
-    const resp = await fetch(getApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, language }),
-    });
-    const data = await resp.json();
-    if (data.error) {
-      resultEl.textContent = i18n[document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en'].error + ': ' + data.error;
+    runBtn.disabled = true;
+    runBtn.textContent = i18n[
+      document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en'
+    ].loadingPyodide;
+
+    runBtn.textContent = i18n[
+      document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en'
+    ].runButton;
+
+    const result = await runInWorker(code);
+
+    if (result.error) {
+      const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
+      resultEl.textContent = i18n[langKey].error + ': ' + result.error;
+    } else if (result.output) {
+      resultEl.textContent = result.output;
     } else {
-      resultEl.textContent = data.output;
+      resultEl.textContent = '(no output)';
     }
-  } catch (e) {
-    resultEl.textContent = 'Network error: ' + e;
+  } catch (err) {
+    const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
+    resultEl.textContent = i18n[langKey].error + ': ' + err.message;
+  } finally {
+    runBtn.disabled = false;
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   loadThemeFromPref();
   loadLangFromPref();
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
   document.getElementById('lang-toggle').addEventListener('click', toggleLang);
   document.getElementById('code').addEventListener('keydown', handleCodeKeydown);
   document.getElementById('run').addEventListener('click', runCode);
+
+  initWorker().catch((err) => {
+    console.warn('WASM worker init failed:', err);
+  });
 });
