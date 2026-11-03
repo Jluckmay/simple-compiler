@@ -1,7 +1,7 @@
 // runtimes/r.mjs — Execução R via webr (R compilado para WASM).
 // Execução em memória; sem acesso a rede ou sistema de arquivos do host.
 // Usa a classe WebR do webr para instanciar um ambiente R e executar código.
-// Captura saída via capture.output() do R e toJson() para o último resultado.
+// Captura saída via capture.output() + paste() do R e toJs() para converter.
 
 import { WebR } from 'https://cdn.jsdelivr.net/npm/webr@0.4.2/+esm';
 
@@ -23,13 +23,12 @@ async function init() {
 export async function run(code) {
   await init();
   try {
-    // Wrap code to capture printed output using R's capture.output()
-    const wrapped = `capture.output({${code}})`;
+    // Wrap code to capture printed output and collapse to single string
+    const wrapped = `paste(capture.output({${code}}), collapse="\\n")`;
     const result = await r.evalR(wrapped);
-    // result é um vetor de caracteres R com cada linha de saída
-    const lines = await r.toJson(result);
-    const output = lines ? String(lines) : "";
-    return { output, error: null };
+    const output = r.toJs(result);
+    const text = output === undefined || output === null ? "" : String(output);
+    return { output: text, error: null };
   } catch (err) {
     return { output: "", error: err.message || String(err) };
   }
