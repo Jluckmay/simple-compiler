@@ -121,7 +121,7 @@ function handleCodeKeydown(e) {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261103g', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261103h', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
