@@ -3,8 +3,6 @@
 // não estão disponíveis em CDNs genéricos.
 
 export async function run(code) {
-  return {
-    output: "",
-    error: "SQL não é suportado no modo WASM.",
-  };
+  console.info("SQL não é suportado no modo WASM.");
+  return { output: "", error: null };
 }

@@ -2,8 +2,6 @@
 // via CDN.
 
 export async function run(language) {
-  return {
-    output: "",
-    error: `A linguagem '${language}' não é suportada no modo WASM.`,
-  };
+  console.info(`A linguagem '${language}' não é suportada no modo WASM.`);
+  return { output: "", error: null };
 }

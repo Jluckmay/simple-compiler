@@ -121,7 +121,7 @@ function handleCodeKeydown(e) {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261103j', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261103k', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
@@ -224,16 +224,17 @@ async function runCode() {
     return;
   }
 
+  const key = runtimeKey(language);
+  if (!WASM_LANGUAGES.has(key)) {
+    console.info(`A linguagem '${language}' não é suportada no modo WASM.`);
+    runBtn.disabled = false;
+    runBtn.textContent = t(langKey, 'runButton');
+    return;
+  }
+
   try {
     runBtn.disabled = true;
     runBtn.textContent = t(langKey, 'loadingRuntime');
-
-    const key = runtimeKey(language);
-    if (!WASM_LANGUAGES.has(key)) {
-      resultEl.textContent = t(langKey, 'error') + ': ' +
-        `A linguagem '${language}' não é suportada no modo WASM.`;
-      return;
-    }
 
     const result = await runInWorker(key, code);
 
