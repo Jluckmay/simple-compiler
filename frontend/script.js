@@ -1,6 +1,6 @@
-// script.js — Frontend WASM (sem servidor backend).
-// A execução de código Python roda dentro de um Web Worker via Pyodide (WASM),
-// isolada da thread principal e protegida por múltiplas camadas de segurança.
+// script.js — Frontend WASM multi-linguagem (sem servidor backend).
+// Cada linguagem executa em um Web Worker dedicado via seu runtime WASM.
+// Um tempo limite externo (5 s) encerra o worker em caso de looping infinito.
 
 const i18n = {
   en: {
@@ -10,9 +10,9 @@ const i18n = {
     outputTitle: "Output",
     error: "Error",
     placeholder: "Write your code here...",
-    wasmOnly: "WASM sandbox currently supports Python only. Other languages require a backend server.",
-    loadingPyodide: "Loading WASM runtime (Pyodide)...",
-    ready: "Ready",
+    loadingRuntime: "Loading WASM runtime...",
+    timeout: "Execution timed out after {seconds} seconds",
+    runButton: "Run",
   },
   pt: {
     title: "Compilador Simples",
@@ -21,14 +21,32 @@ const i18n = {
     outputTitle: "Saída",
     error: "Erro",
     placeholder: "Escreva seu código aqui...",
-    wasmOnly: "O sandbox WASM suporta apenas Python no momento. Outras linguagens requerem um servidor backend.",
-    loadingPyodide: "Carregando runtime WASM (Pyodide)...",
-    ready: "Pronto",
+    loadingRuntime: "Carregando runtime WASM...",
+    timeout: "Execução excedeu {seconds} segundos",
+    runButton: "Executar",
   },
 };
 
-const EXEC_TIMEOUT_MS = 5000; // tempo máximo de execução Python (ms)
-let pendingCalls = new Map();
+const EXEC_TIMEOUT_MS = 5000; // tempo máximo de execução do código (ms)
+const INIT_TIMEOUT_MS = 30000; // tempo máximo para baixar/inicializar o runtime WASM (ms)
+const WORKER_INIT_TIMEOUT_MS = 15000; // tempo máximo para criar o worker (ms)
+
+const LANGUAGE_MAP = {
+  js: 'javascript',
+  ts: 'typescript',
+};
+
+const WASM_LANGUAGES = new Set([
+  'python', 'javascript', 'typescript', 'lua', 'sql', 'r', 'htmlcss',
+]);
+
+function runtimeKey(language) {
+  return LANGUAGE_MAP[language] || language;
+}
+
+const workers = {}; // language -> Worker
+const pending = new Map(); // id -> { resolve, reject, timer, worker }
+const runtimeLoaded = {}; // language -> boolean (runtime já baixado/inicializado)
 let msgCounter = 0;
 
 function setLang(lang) {
@@ -92,84 +110,95 @@ function handleCodeKeydown(e) {
   }
 }
 
-function createWorker() {
-  const w = new Worker('worker.js');
+function createWorker(language) {
+  const w = new Worker('worker.mjs', { type: 'module' });
+  w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
       w.terminate();
       reject(new Error('Worker initialization timeout'));
-    }, 30000);
+    }, WORKER_INIT_TIMEOUT_MS);
 
-    const onceReady = (event) => {
-      if ((event.data || {})._ready) {
-        w.removeEventListener('message', onceReady);
-        clearTimeout(initTimeout);
-        resolve(w);
+    w.onmessage = (event) => {
+      const { id, output, error } = event.data || {};
+      const cb = pending.get(id);
+      if (!cb || cb.worker !== w) return;
+      pending.delete(id);
+      clearTimeout(cb.timer);
+      if (error) {
+        cb.reject(new Error(error));
+      } else {
+        runtimeLoaded[w.language] = true;
+        cb.resolve({ output, error: null });
       }
     };
-    w.addEventListener('message', onceReady);
+
     w.onerror = (err) => {
       clearTimeout(initTimeout);
       w.terminate();
-      reject(new Error(`Worker error: ${err.message}`));
+      const detail = `${err.message || ''} | ${err.filename || ''}:${err.lineno || ''}:${err.colno || ''} | ${err.error ? err.error.stack : ''}`;
+      // Rejeita todas as chamadas pendentes deste worker
+      for (const [id, cb] of pending) {
+        if (cb.worker === w) {
+          pending.delete(id);
+          clearTimeout(cb.timer);
+          cb.reject(new Error(`Worker error: ${detail}`));
+        }
+      }
+      reject(new Error(`Worker error: ${detail}`));
     };
+
+    resolve(w);
   });
 }
 
-function runInWorker(code, timeoutMs = EXEC_TIMEOUT_MS) {
+function getWorker(language) {
+  if (!workers[language]) {
+    workers[language] = createWorker(language);
+  }
+  return workers[language];
+}
+
+function removeWorker(language) {
+  const w = workers[language];
+  if (w) {
+    try { w.terminate(); } catch (_) {}
+    delete workers[language];
+  }
+}
+
+function runInWorker(language, code) {
   return new Promise(async (resolve, reject) => {
     const id = ++msgCounter;
     let worker = null;
-    let execTimer = null;
 
     try {
-      worker = await createWorker();
+      worker = await getWorker(language);
     } catch (err) {
+      removeWorker(language);
       reject(err);
       return;
     }
 
-    const cleanup = () => {
-      if (execTimer) clearTimeout(execTimer);
-      if (worker) worker.terminate();
-      pendingCalls.delete(id);
-    };
+    // Primeira execução de uma linguagem inclui o download do runtime WASM.
+    const timeoutMs = runtimeLoaded[language] ? EXEC_TIMEOUT_MS : INIT_TIMEOUT_MS;
+    const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
 
-    execTimer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`Execution timed out after ${timeoutMs / 1000} seconds`));
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      removeWorker(language);
+      runtimeLoaded[language] = false;
+      reject(new Error(i18n[langKey].timeout.replace('{seconds}', timeoutMs / 1000)));
     }, timeoutMs);
 
-    pendingCalls.set(id, {
-      resolve: (result) => {
-        cleanup();
-        resolve(result);
-      },
-      reject: (err) => {
-        cleanup();
-        reject(err);
-      },
-    });
+    pending.set(id, { resolve, reject, timer, worker });
 
-    worker.onmessage = (event) => {
-      const { id: msgId, result, error } = event.data || {};
-      if (msgId !== id) return;
-      const cb = pendingCalls.get(id);
-      if (!cb) return;
-      pendingCalls.delete(id);
-      clearTimeout(execTimer);
-      worker.terminate();
-      if (error) cb.reject(new Error(error));
-      else cb.resolve(result);
-    };
-
-    worker.onerror = (err) => {
-      cleanup();
-      reject(new Error(`Worker error: ${err.message}`));
-    };
-
-    worker.postMessage({ code, id });
+    worker.postMessage({ language, code, id });
   });
+}
+
+function t(langKey, key) {
+  return i18n[langKey][key] || key;
 }
 
 async function runCode() {
@@ -177,13 +206,8 @@ async function runCode() {
   const language = document.getElementById('language').value;
   const resultEl = document.getElementById('result');
   const runBtn = document.getElementById('run');
+  const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
   resultEl.textContent = '';
-
-  if (language !== 'python') {
-    const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
-    resultEl.textContent = i18n[langKey].wasmOnly;
-    return;
-  }
 
   if (!code.trim()) {
     resultEl.textContent = '';
@@ -192,41 +216,38 @@ async function runCode() {
 
   try {
     runBtn.disabled = true;
-    runBtn.textContent = i18n[
-      document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en'
-    ].loadingPyodide;
+    runBtn.textContent = t(langKey, 'loadingRuntime');
 
-    runBtn.textContent = i18n[
-      document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en'
-    ].runButton;
+    const key = runtimeKey(language);
+    if (!WASM_LANGUAGES.has(key)) {
+      resultEl.textContent = t(langKey, 'error') + ': ' +
+        `A linguagem '${language}' requer um servidor backend para execução. ` +
+        `O modo WASM suporta: Python, JavaScript, TypeScript, Lua, SQL e R.`;
+      return;
+    }
 
-    const result = await runInWorker(code);
+    const result = await runInWorker(key, code);
 
     if (result.error) {
-      const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
-      resultEl.textContent = i18n[langKey].error + ': ' + result.error;
+      resultEl.textContent = t(langKey, 'error') + ': ' + result.error;
     } else if (result.output) {
       resultEl.textContent = result.output;
     } else {
       resultEl.textContent = '(no output)';
     }
   } catch (err) {
-    const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
-    resultEl.textContent = i18n[langKey].error + ': ' + err.message;
+    resultEl.textContent = t(langKey, 'error') + ': ' + err.message;
   } finally {
     runBtn.disabled = false;
+    runBtn.textContent = t(langKey, 'runButton');
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   loadThemeFromPref();
   loadLangFromPref();
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
   document.getElementById('lang-toggle').addEventListener('click', toggleLang);
   document.getElementById('code').addEventListener('keydown', handleCodeKeydown);
   document.getElementById('run').addEventListener('click', runCode);
-
-  initWorker().catch((err) => {
-    console.warn('WASM worker init failed:', err);
-  });
 });
