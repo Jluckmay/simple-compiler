@@ -29,12 +29,12 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **Modern UI** – simple, responsive layout with dark/light mode that follows the system preference.
 - **Internationalisation** – English/Português toggle, all UI strings externalised in `frontend/i18n`.
 - **Screen‑reader friendly** – ARIA live region for output, proper `aria-label`s.
-- **WASM sandbox** – Python code executes in the browser via **Pyodide** (WebAssembly) inside a **Web Worker**, isolating it from the main UI thread. No backend server, no Docker, no network calls to external APIs.
-- **Python only** – the WASM sandbox currently supports Python. Other languages (C, C++, Java, Go, etc.) require a backend server and are not available in client‑only mode.
-- **Execution timeout** – Python execution is limited to **5 seconds** to prevent infinite loops and hangs.
+- **WASM sandbox** – code executes in the browser via WebAssembly runtimes inside **Web Workers**, isolating it from the main UI thread. No backend server, no Docker, no network calls to external APIs for supported languages.
+- **Multi‑language WASM support** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR) run entirely client‑side. C, C++, C#, Java, Go, Lean, LaTeX require a backend server (Flask + Docker) and show an informative message in client‑only mode.
+- **Execution timeout** – each language execution is limited to **5 seconds** (30–120 s on first run for runtime download) to prevent infinite loops and hangs.
 - **Content Security Policy (CSP)** – restrictive CSP headers block inline scripts, `object` tags, and unauthorized network connections.
-- **Dangerous pattern detection** – code containing `import os/subprocess/sys/socket/urllib/requests/shutil/pathlib/ctypes/pickle/sqlite3`, `eval()`, `exec()`, `compile()`, `open()`, `__import__`, shell metacharacters (backticks, `$(`, `; rm`, `&& curl`, `| nc`), and other dangerous patterns is rejected before execution.
-- **Restricted builtins** – only safe, pure builtins are exposed (`print`, `len`, `str`, `int`, `range`, `map`, `filter`, `sorted`, etc.). File system, network, and process APIs are unavailable.
+- **Dangerous pattern detection** – code containing dangerous imports (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, shell metacharacters, and other dangerous patterns is rejected before execution.
+- **Restricted builtins** – only safe, pure builtins are exposed. File system, network, and process APIs are unavailable.
 - **Maximum code size** – submissions larger than 100 KB are rejected.
 - **Error sanitization** – error messages are scrubbed of sensitive information before being returned to the UI.
 - **CI pipeline** – GitHub Actions run unit tests on every push.
@@ -44,12 +44,12 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **UI moderna** – layout simples e responsivo com modo claro/escuro que segue a preferência do sistema.
 - **Internacionalização** – alternância Inglês/Português, todas as strings da UI externalizadas em `frontend/i18n`.
 - **Amigável para leitores de tela** – região ARIA ao vivo para saída, `aria-label`s apropriados.
-- **Sandbox WASM** – código Python executa no navegador via **Pyodide** (WebAssembly) dentro de um **Web Worker**, isolado da thread principal da UI. Sem servidor backend, sem Docker, sem chamadas de rede para APIs externas.
-- **Apenas Python** – o sandbox WASM suporta atualmente apenas Python. Outras linguagens (C, C++, Java, Go, etc.) requerem um servidor backend e não estão disponíveis no modo apenas-cliente.
-- **Tempo limite de execução** – a execução Python é limitada a **5 segundos** para evitar loops infinitos e travamentos.
+- **Sandbox WASM** – código executa no navegador via runtimes WebAssembly dentro de **Web Workers**, isolado da thread principal da UI. Sem servidor backend, sem Docker, sem chamadas de rede para APIs externas para linguagens suportadas.
+- **Suporte multi-linguagem WASM** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR) rodam inteiramente no lado do cliente. C, C++, C#, Java, Go, Lean, LaTeX requerem um servidor backend (Flask + Docker) e exibem uma mensagem informativa no modo apenas-cliente.
+- **Tempo limite de execução** – cada execução é limitada a **5 segundos** (30–120 s na primeira execução para download do runtime) para evitar loops infinitos e travamentos.
 - **Política de Segurança de Conteúdo (CSP)** – cabeçalhos CSP restritivos bloqueiam scripts inline, tags `object` e conexões de rede não autorizadas.
-- **Detecção de padrões perigosos** – código contendo `import os/subprocess/sys/socket/urllib/requests/shutil/pathlib/ctypes/pickle/sqlite3`, `eval()`, `exec()`, `compile()`, `open()`, `__import__`, metacaracteres de shell (crases, `$(`, `; rm`, `&& curl`, `| nc`), e outros padrões perigosos é rejeitado antes da execução.
-- **Builtins restritos** – apenas builtins seguros e puros são expostos (`print`, `len`, `str`, `int`, `range`, `map`, `filter`, `sorted`, etc.). APIs de sistema de arquivos, rede e processo estão indisponíveis.
+- **Detecção de padrões perigosos** – código contendo imports perigosos (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, metacaracteres de shell e outros padrões perigosos é rejeitado antes da execução.
+- **Builtins restritos** – apenas builtins seguros e puros são expostos. APIs de sistema de arquivos, rede e processo estão indisponíveis.
 - **Tamanho máximo de código** – submissões maiores que 100 KB são rejeitadas.
 - **Sanitização de erros** – mensagens de erro são limpas de informações sensíveis antes de serem retornadas à UI.
 - **Pipeline de CI** – GitHub Actions executa testes unitários a cada push.
@@ -62,23 +62,23 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 | Language / Linguagem | WASM Support | Notes / Notas |
 |----------|--------------|---------------|
 | Python | ✅ Yes / Sim | Via Pyodide (WebAssembly) in Web Worker |
+| JavaScript | ✅ Yes / Sim | Via QuickJS (WebAssembly) in Web Worker |
+| TypeScript | ✅ Yes / Sim | TS compiler + QuickJS (WebAssembly) in Web Worker |
+| Lua | ✅ Yes / Sim | Via wasmoon (WebAssembly) in Web Worker |
+| R | ✅ Yes / Sim | Via WebR (WebAssembly) in Web Worker |
+| SQL (SQLite) | ⚠️ Limited | Requires COOP/COEP headers; backend recommended |
+| HTML/CSS | ✅ Yes / Sim | Preview mode (no execution) |
 | C | ❌ No / Não | Requires backend server |
 | C++ | ❌ No / Não | Requires backend server |
 | C# | ❌ No / Não | Requires backend server |
 | Java | ❌ No / Não | Requires backend server |
-| JavaScript | ❌ No / Não | Requires backend server |
-| TypeScript | ❌ No / Não | Requires backend server |
-| SQL (SQLite) | ❌ No / Não | Requires backend server |
-| Lua | ❌ No / Não | Requires backend server |
 | Go | ❌ No / Não | Requires backend server |
 | Lean | ❌ No / Não | Requires backend server |
-| R | ❌ No / Não | Requires backend server |
 | LaTeX | ❌ No / Não | Requires backend server |
-| HTML/CSS | ❌ No / Não | Requires backend server |
 
-> **Note / Nota:** The client‑side WASM sandbox supports Python only. To compile/run other languages, a backend server (Flask + Docker) is required, which is retained in `backend/` but not used by the default frontend.
+> **Note / Nota:** The client‑side WASM sandbox supports Python, JavaScript, TypeScript, Lua, and R. SQL requires COOP/COEP response headers for full WASM support; use the backend server for production SQL. C, C++, C#, Java, Go, Lean, LaTeX require a backend server (Flask + Docker), which is retained in `backend/` but not used by the default frontend.
 
-> **Nota / Nota:** O sandbox WASM do lado do cliente suporta apenas Python. Para compilar/executar outras linguagens, um servidor backend (Flask + Docker) é necessário, que está retido em `backend/` mas não é usado pelo frontend padrão.
+> **Nota / Nota:** O sandbox WASM do lado do cliente suporta Python, JavaScript, TypeScript, Lua e R. SQL requer cabeçalhos de resposta COOP/COEP para suporte completo WASM; use o servidor backend para SQL em produção. C, C++, C#, Java, Go, Lean, LaTeX requerem um servidor backend (Flask + Docker), que está retido em `backend/` mas não é usado pelo frontend padrão.
 
 ---
 
@@ -86,26 +86,26 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 
 **English:**
 1. **Browser sandbox** – WASM execution runs inside the browser's native sandbox: no access to the host filesystem, network, DOM, or environment variables.
-2. **Web Worker isolation** – Python execution runs in a dedicated Web Worker thread, preventing UI freezes and allowing worker termination on timeout.
-3. **Execution timeout** – Python code is terminated after **5 seconds** to prevent infinite loops and denial‑of‑service.
+2. **Web Worker isolation** – each language runs in a dedicated Web Worker thread, preventing UI freezes and allowing worker termination on timeout.
+3. **Execution timeout** – code is terminated after **5 seconds** (30–120 s on first run for runtime download) to prevent infinite loops and denial‑of‑service.
 4. **Content Security Policy (CSP)** – `script-src` limited to `'self'` and trusted CDNs; `object-src 'none'`; `connect-src 'self'`; inline scripts blocked.
 5. **Input validation** – code is validated for size (max 100 KB) and dangerous patterns before execution.
-6. **Dangerous pattern detection** – regex‑based rejection of `import os/subprocess/sys/socket/urllib/requests/shutil/pathlib/ctypes/pickle/sqlite3`, `eval()`, `exec()`, `compile()`, `open()`, `__import__`, shell metacharacters, and other dangerous constructs.
+6. **Dangerous pattern detection** – regex‑based rejection of dangerous imports (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, shell metacharacters, and other dangerous constructs.
 7. **Restricted builtins** – only safe pure builtins are exposed; `open`, `eval`, `exec`, `__import__`, `globals()`, `locals()`, `vars()`, `dir()` are unavailable.
-8. **Stdout capture** – `sys.stdout` is redirected to `StringIO` during execution, capturing only `print()` output.
-9. **Error sanitization** – Python exceptions are caught and returned without exposing system paths or sensitive information.
+8. **Stdout capture** – output is captured via language‑appropriate mechanisms (`StringIO` for Python, `console.log` interception for R, `print` override for Lua, etc.).
+9. **Error sanitization** – exceptions are caught and returned without exposing system paths or sensitive information.
 10. **Worker termination** – the Web Worker is terminated after each execution (success, error, or timeout), ensuring no lingering state.
 
 **Português:**
 1. **Sandbox do navegador** – execução WASM roda dentro do sandbox nativo do navegador: sem acesso ao sistema de arquivos do host, rede, DOM ou variáveis de ambiente.
-2. **Isolamento Web Worker** – execução Python roda em um Web Worker dedicado, evitando travamentos da UI e permitindo terminação do worker em caso de timeout.
-3. **Tempo limite de execução** – código Python é terminado após **5 segundos** para evitar loops infinitos e negação de serviço.
+2. **Isolamento Web Worker** – cada linguagem roda em um Web Worker dedicado, evitando travamentos da UI e permitindo terminação do worker em caso de timeout.
+3. **Tempo limite de execução** – código é terminado após **5 segundos** (30–120 s na primeira execução para download do runtime) para evitar loops infinitos e negação de serviço.
 4. **Política de Segurança de Conteúdo (CSP)** – `script-src` limitado a `'self'` e CDNs confiáveis; `object-src 'none'`; `connect-src 'self'`; scripts inline bloqueados.
 5. **Validação de entrada** – código validado quanto ao tamanho (máx. 100 KB) e padrões perigosos antes da execução.
-6. **Detecção de padrões perigosos** – rejeição baseada em regex de `import os/subprocess/sys/socket/urllib/requests/shutil/pathlib/ctypes/pickle/sqlite3`, `eval()`, `exec()`, `compile()`, `open()`, `__import__`, metacaracteres de shell e outros construtos perigosos.
+6. **Detecção de padrões perigosos** – rejeição baseada em regex de imports perigosos (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, metacaracteres de shell e outros construtos perigosos.
 7. **Builtins restritos** – apenas builtins seguros e puros são expostos; `open`, `eval`, `exec`, `__import__`, `globals()`, `locals()`, `vars()`, `dir()` estão indisponíveis.
-8. **Captura de stdout** – `sys.stdout` é redirecionado para `StringIO` durante a execução, capturando apenas a saída de `print()`.
-9. **Sanitização de erros** – exceções Python são capturadas e retornadas sem expor caminhos do sistema ou informações sensíveis.
+8. **Captura de saída** – saída capturada via mecanismos específicos de cada linguagem (`StringIO` para Python, interceptação de `console.log` para R, override de `print` para Lua, etc.).
+9. **Sanitização de erros** – exceções são capturadas e retornadas sem expor caminhos do sistema ou informações sensíveis.
 10. **Término do worker** – o Web Worker é terminado após cada execução (sucesso, erro ou timeout), garantindo que nenhum estado persista.
 
 ---
@@ -115,10 +115,20 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 ```
 simple-compiler/
 ├─ frontend/                     # static site / site estático (HTML/CSS/JS)
-│   ├─ index.html                # HTML com CSP e carregamento do Pyodide via CDN
+│   ├─ index.html                # HTML com CSP e carregamento de runtimes WASM via CDN
 │   ├─ style.css
 │   ├─ script.js                 # frontend WASM + Web Worker orchestration
-│   ├─ worker.js                 # Web Worker com Pyodide + validação de segurança
+│   ├─ worker.mjs                # Web Worker módulo com orquestração de runtimes
+│   ├─ runtimes/                 # runtimes WASM por linguagem
+│   │   ├─ python.mjs            # Pyodide + sandbox de segurança
+│   │   ├─ javascript.mjs        # QuickJS sandbox
+│   │   ├─ typescript.mjs        # TS compiler + QuickJS
+│   │   ├─ lua.mjs               # wasmoon sandbox
+│   │   ├─ sql.mjs               # SQL informativo (requer COOP/COEP)
+│   │   ├─ r.mjs                 # WebR sandbox
+│   │   ├─ htmlcss.mjs           # preview mode
+│   │   └─ unsupported.mjs       # mensagem para linguagens sem WASM
+│   ├─ serve.py                  # servidor de dev local (MIME .mjs correto)
 │   └─ i18n/ (en.json, pt.json)
 ├─ backend/                      # Flask API (retained, not used by default frontend)
 │   ├─ app.py
