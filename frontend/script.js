@@ -28,8 +28,14 @@ const i18n = {
 };
 
 const EXEC_TIMEOUT_MS = 5000; // tempo máximo de execução do código (ms)
-const INIT_TIMEOUT_MS = 30000; // tempo máximo para baixar/inicializar o runtime WASM (ms)
-const WORKER_INIT_TIMEOUT_MS = 15000; // tempo máximo para criar o worker (ms)
+const DEFAULT_INIT_TIMEOUT_MS = 30000; // tempo padrão para baixar/inicializar o runtime WASM (ms)
+const WORKER_INIT_TIMEOUT_MS = 60000; // tempo máximo para criar o worker (ms)
+
+// Runtimes grandes (sqlite-wasm, webr) precisam de mais tempo para baixar.
+const INIT_TIMEOUT_BY_LANG = {
+  sql: 120000,  // sqlite-wasm é grande (~several MB)
+  r: 120000,    // webr é grande (~several MB)
+};
 
 const LANGUAGE_MAP = {
   js: 'javascript',
@@ -42,6 +48,10 @@ const WASM_LANGUAGES = new Set([
 
 function runtimeKey(language) {
   return LANGUAGE_MAP[language] || language;
+}
+
+function initTimeoutFor(language) {
+  return INIT_TIMEOUT_BY_LANG[language] || DEFAULT_INIT_TIMEOUT_MS;
 }
 
 const workers = {}; // language -> Worker
@@ -111,13 +121,13 @@ function handleCodeKeydown(e) {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261103b', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
       w.terminate();
       reject(new Error('Worker initialization timeout'));
-    }, WORKER_INIT_TIMEOUT_MS);
+    }, initTimeoutFor(language));
 
     w.onmessage = (event) => {
       const { id, output, error } = event.data || {};
@@ -181,7 +191,7 @@ function runInWorker(language, code) {
     }
 
     // Primeira execução de uma linguagem inclui o download do runtime WASM.
-    const timeoutMs = runtimeLoaded[language] ? EXEC_TIMEOUT_MS : INIT_TIMEOUT_MS;
+    const timeoutMs = runtimeLoaded[language] ? EXEC_TIMEOUT_MS : initTimeoutFor(language);
     const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
 
     const timer = setTimeout(() => {

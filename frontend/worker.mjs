@@ -3,14 +3,16 @@
 // externamente (script.js) quando o tempo limite é atingido, interrompendo
 // loops infinitos sem travar a thread principal da UI.
 
+const CACHE_BUST = '?v=20261103b';
+
 const RUNTIMES = {
-  python: () => import('./runtimes/python.mjs'),
-  javascript: () => import('./runtimes/javascript.mjs'),
-  typescript: () => import('./runtimes/typescript.mjs'),
-  lua: () => import('./runtimes/lua.mjs'),
-  sql: () => import('./runtimes/sql.mjs'),
-  r: () => import('./runtimes/r.mjs'),
-  htmlcss: () => import('./runtimes/htmlcss.mjs'),
+  python: () => import(`./runtimes/python.mjs${CACHE_BUST}`),
+  javascript: () => import(`./runtimes/javascript.mjs${CACHE_BUST}`),
+  typescript: () => import(`./runtimes/typescript.mjs${CACHE_BUST}`),
+  lua: () => import(`./runtimes/lua.mjs${CACHE_BUST}`),
+  sql: () => import(`./runtimes/sql.mjs${CACHE_BUST}`),
+  r: () => import(`./runtimes/r.mjs${CACHE_BUST}`),
+  htmlcss: () => import(`./runtimes/htmlcss.mjs${CACHE_BUST}`),
   // c, cpp, csharp, java, go, lean, latex -> backend requerido
 };
 
@@ -20,7 +22,7 @@ async function getRuntime(language) {
   if (runtimeCache.has(language)) return runtimeCache.get(language);
   const loader = RUNTIMES[language];
   if (!loader) {
-    const mod = await import('./runtimes/unsupported.mjs');
+    const mod = await import(`./runtimes/unsupported.mjs${CACHE_BUST}`);
     runtimeCache.set(language, mod);
     return mod;
   }
