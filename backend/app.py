@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import subprocess, tempfile, os, shutil, re
+import subprocess, tempfile, os, shutil, re, time
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -13,6 +13,42 @@ MAX_CODE_SIZE = 100 * 1024
 # ---------------------------------------------------------------------------
 TIMEOUT = 5  # seconds – enforced inside Docker and in subprocess fallback
 MAX_OUTPUT = 10000  # characters – truncate stdout / stderr
+
+# Rate limiting: máximo de requisições por IP por minuto
+RATE_LIMIT_REQUESTS = 30
+RATE_LIMIT_WINDOW = 60  # seconds
+_rate_limit_store = {}  # ip -> [timestamps]
+
+# API key opcional para autenticação (definir via variável de ambiente API_KEY)
+API_KEY = os.environ.get('API_KEY', None)
+
+# ---------------------------------------------------------------------------
+# Security helpers
+# ---------------------------------------------------------------------------
+
+def check_rate_limit(ip: str) -> bool:
+    """Retorna True se o IP excedeu o limite de requisições."""
+    now = time.time()
+    timestamps = _rate_limit_store.get(ip, [])
+    # Remove timestamps antigos
+    timestamps = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
+    if len(timestamps) >= RATE_LIMIT_REQUESTS:
+        return True
+    timestamps.append(now)
+    _rate_limit_store[ip] = timestamps
+    return False
+
+def check_auth() -> tuple[bool, str]:
+    """Verifica autenticação via API key se configurada."""
+    if API_KEY is None:
+        return True, ""
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return False, "Missing or invalid Authorization header"
+    token = auth_header[7:]
+    if token != API_KEY:
+        return False, "Invalid API key"
+    return True, ""
 
 # Mapping language → Docker image + command helpers
 LANG_CONFIG = {
@@ -127,6 +163,8 @@ def run_subprocess(cmd, input_data=None, cwd=None):
 def run_in_container(image, cmd, src_path=None, workdir=None, input_data=None):
     """Run a command inside a Docker container with strict resource limits.
     Returns (stdout, stderr). If Docker is not available this function should not be called.
+    Uses an isolated temporary directory for volume mounting to avoid exposing
+    the host filesystem.
     """
     docker_cmd = [
         "docker", "run", "--rm",
@@ -134,12 +172,16 @@ def run_in_container(image, cmd, src_path=None, workdir=None, input_data=None):
         "--cpus", "0.5",
         "--memory", "256m",
         "-i",
+        "--read-only",  # Prevent writing to container filesystem except /tmp
+        "--tmpfs", "/tmp:noexec,nosuid,size=64m",  # Isolated, non-executable tmpfs
     ]
     if workdir:
         docker_cmd += ["-w", workdir]
     if src_path:
+        # Use an isolated temp directory for the volume mount, not the host's /tmp
         host_dir = os.path.dirname(src_path)
-        docker_cmd += ["-v", f"{host_dir}:/code"]
+        # Mount only the specific temp directory, read-only where possible
+        docker_cmd += ["-v", f"{host_dir}:/code:ro"]
         # join command parts into a shell string executed inside the container
         docker_cmd += [image, "bash", "-c", " ".join(["cd /code &&"] + cmd)]
     else:
@@ -292,6 +334,16 @@ def sanitize_error(message: str) -> str:
 # ---------------------------------------------------------------------------
 @app.route('/compile', methods=['POST'])
 def compile_code():
+    # Rate limiting
+    client_ip = request.remote_addr or 'unknown'
+    if check_rate_limit(client_ip):
+        return jsonify({"error": "Rate limit exceeded. Try again later."}), 429
+
+    # Authentication (if API_KEY is configured)
+    auth_ok, auth_reason = check_auth()
+    if not auth_ok:
+        return jsonify({"error": auth_reason}), 401
+
     data = request.get_json(silent=True) or {}
     code = data.get('code', '')
     language = data.get('language', '').lower()
