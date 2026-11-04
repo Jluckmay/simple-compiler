@@ -13,6 +13,9 @@ const i18n = {
     loadingRuntime: "Loading WASM runtime...",
     timeout: "Execution timed out after {seconds} seconds",
     runButton: "Run",
+    backendFallback: "WASM execution failed, falling back to backend server...",
+    backendError: "Backend error",
+    wakingBackend: "Waking up backend server...",
   },
   pt: {
     title: "Compilador Simples",
@@ -24,6 +27,9 @@ const i18n = {
     loadingRuntime: "Carregando runtime WASM...",
     timeout: "Execução excedeu {seconds} segundos",
     runButton: "Executar",
+    backendFallback: "Falha na execução WASM, recorrendo ao servidor backend...",
+    backendError: "Erro do servidor backend",
+    wakingBackend: "Acordando servidor backend...",
   },
 };
 
@@ -53,6 +59,35 @@ function runtimeKey(language) {
 
 function initTimeoutFor(language) {
   return INIT_TIMEOUT_BY_LANG[language] || DEFAULT_INIT_TIMEOUT_MS;
+}
+
+function getApiUrl() {
+  return 'https://simple-compiler-ldj7.onrender.com/compile';
+}
+
+async function wakeBackend() {
+  try {
+    await fetch(getApiUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: '', language: 'python' }),
+    });
+  } catch (_) {
+    // Ignore wake-up errors; the backend may be spinning down
+  }
+}
+
+async function runViaBackend(code, language) {
+  const resp = await fetch(getApiUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, language }),
+  });
+  const data = await resp.json();
+  return {
+    output: data.output || '',
+    error: data.error || null,
+  };
 }
 
 const workers = {}; // language -> Worker
@@ -233,25 +268,41 @@ async function runCode() {
     return;
   }
 
+  let wasmResult = null;
+  let wasmError = null;
+
   try {
     runBtn.disabled = true;
     runBtn.textContent = t(langKey, 'loadingRuntime');
 
-    const result = await runInWorker(key, code);
-
-    if (result.error) {
-      resultEl.textContent = t(langKey, 'error') + ': ' + result.error;
-    } else if (result.output) {
-      resultEl.textContent = result.output;
-    } else {
-      resultEl.textContent = '(no output)';
-    }
+    wasmResult = await runInWorker(key, code);
   } catch (err) {
-    resultEl.textContent = t(langKey, 'error') + ': ' + err.message;
-  } finally {
-    runBtn.disabled = false;
-    runBtn.textContent = t(langKey, 'runButton');
+    wasmError = err;
   }
+
+  // Se o WASM falhou, recorre ao servidor backend
+  if (wasmError || (wasmResult && wasmResult.error)) {
+    runBtn.textContent = t(langKey, 'backendFallback');
+    try {
+      const backendResult = await runViaBackend(code, language);
+      if (backendResult.error) {
+        resultEl.textContent = t(langKey, 'backendError') + ': ' + backendResult.error;
+      } else if (backendResult.output) {
+        resultEl.textContent = backendResult.output;
+      } else {
+        resultEl.textContent = '(no output)';
+      }
+    } catch (backendErr) {
+      resultEl.textContent = t(langKey, 'backendError') + ': ' + backendErr.message;
+    }
+  } else if (wasmResult && wasmResult.output) {
+    resultEl.textContent = wasmResult.output;
+  } else {
+    resultEl.textContent = '(no output)';
+  }
+
+  runBtn.disabled = false;
+  runBtn.textContent = t(langKey, 'runButton');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -261,4 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('lang-toggle').addEventListener('click', toggleLang);
   document.getElementById('code').addEventListener('keydown', handleCodeKeydown);
   document.getElementById('run').addEventListener('click', runCode);
+
+  // Acorda o servidor backend em segundo plano (Render free tier hiberna após inatividade)
+  wakeBackend();
 });
