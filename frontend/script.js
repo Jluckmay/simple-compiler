@@ -35,6 +35,7 @@ const WORKER_INIT_TIMEOUT_MS = 60000; // tempo máximo para criar o worker (ms)
 const INIT_TIMEOUT_BY_LANG = {
   sql: 120000,  // sqlite-wasm é grande (~several MB)
   r: 120000,    // webr é grande (~several MB)
+  latex: 180000, // tectonic + pdf.js são grandes (~several MB)
 };
 
 const LANGUAGE_MAP = {
@@ -43,7 +44,7 @@ const LANGUAGE_MAP = {
 };
 
 const WASM_LANGUAGES = new Set([
-  'python', 'javascript', 'typescript', 'lua', 'sql', 'r', 'htmlcss',
+  'python', 'javascript', 'typescript', 'lua', 'sql', 'r', 'latex', 'htmlcss',
 ]);
 
 function runtimeKey(language) {
@@ -121,7 +122,7 @@ function handleCodeKeydown(e) {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261103k', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261104', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {

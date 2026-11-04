@@ -3,7 +3,7 @@
 // externamente (script.js) quando o tempo limite é atingido, interrompendo
 // loops infinitos sem travar a thread principal da UI.
 
-const CACHE_BUST = '?v=20261103k';
+const CACHE_BUST = '?v=20261104';
 
 const RUNTIMES = {
   python: () => import(`./runtimes/python.mjs${CACHE_BUST}`),
@@ -12,8 +12,9 @@ const RUNTIMES = {
   lua: () => import(`./runtimes/lua.mjs${CACHE_BUST}`),
   sql: () => import(`./runtimes/sql.mjs${CACHE_BUST}`),
   r: () => import(`./runtimes/r.mjs${CACHE_BUST}`),
+  latex: () => import(`./runtimes/latex.mjs${CACHE_BUST}`),
   htmlcss: () => import(`./runtimes/htmlcss.mjs${CACHE_BUST}`),
-  // c, cpp, csharp, java, go, lean, latex -> backend requerido
+  // c, cpp, csharp, java, go, lean -> backend requerido
 };
 
 const runtimeCache = new Map();
