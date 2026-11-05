@@ -1,0 +1,283 @@
+/* ==========================================================================
+   Simple Compiler — Modern Dark UI
+   Inspired by soft-and-skills visual identity
+   ========================================================================== */
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-hover: #1a1a1a;
+  --border: #222222;
+  --accent-red: #ff0000;
+  --accent-red-hover: #ff3333;
+  --accent-yellow: #ffd700;
+  --text: #ffffff;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --code-bg: #0d0d0d;
+  --output-bg: #0d0d0d;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --radius: 8px;
+  --transition: all 0.2s ease;
+}
+
+html[data-theme='light'] {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-hover: #f3f4f6;
+  --border: #e5e7eb;
+  --accent-red: #dc2626;
+  --accent-red-hover: #b91c1c;
+  --accent-yellow: #ca8a04;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --code-bg: #f3f4f6;
+  --output-bg: #f9fafb;
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Header ===== */
+.shell-header {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shell-prompt {
+  color: var(--accent-red);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.shell-slash {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.shell-brand h1 {
+  color: var(--text);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.shell-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ===== Main Layout ===== */
+.shell-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ===== Cards ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent-red);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-label {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-title {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ===== Form Controls ===== */
+.shell-select {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  outline: none;
+}
+
+.shell-select:hover {
+  border-color: var(--text-dim);
+}
+
+.shell-select:focus {
+  border-color: var(--accent-red);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+}
+
+.shell-select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ===== Code Editor ===== */
+.shell-code {
+  width: 100%;
+  min-height: 240px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 1rem;
+  resize: vertical;
+  outline: none;
+  transition: var(--transition);
+}
+
+.shell-code::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.shell-code:hover {
+  border-color: var(--text-dim);
+}
+
+.shell-code:focus {
+  border-color: var(--accent-red);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+}
+
+/* ===== Buttons ===== */
+.shell-btn {
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.shell-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shell-btn-icon {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+}
+
+.shell-btn-icon:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.shell-btn-primary {
+  background: var(--accent-red);
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  width: 100%;
+}
+
+.shell-btn-primary:hover {
+  background: var(--accent-red-hover);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.2);
+}
+
+.shell-btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* ===== Output ===== */
+.shell-output {
+  background: var(--output-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 1rem;
+  min-height: 120px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ===== Responsive ===== */
+@media (min-width: 640px) {
+  .shell-main {
+    flex-direction: row;
+  }
+
+  .editor-card,
+  .output-card {
+    flex: 1;
+  }
+}

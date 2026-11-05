@@ -1,0 +1,8 @@
+{
+  "title": "Compilador Simples",
+  "languageLabel": "Linguagem",
+  "runButton": "Executar",
+  "outputTitle": "Saída",
+  "error": "Erro",
+  "placeholder": "Escreva seu código aqui..."
+}

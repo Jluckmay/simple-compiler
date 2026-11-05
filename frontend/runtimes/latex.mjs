@@ -33,7 +33,6 @@ async function initPdfJs() {
   // Tenta importar o pdf.js para renderização do PDF gerado.
   const candidates = [
     'https://cdn.jsdelivr.net/npm/pdfjs-dist@latest/+esm',
-    'https://unpkg.com/pdfjs-dist@latest/+esm',
   ];
   for (const url of candidates) {
     try {
