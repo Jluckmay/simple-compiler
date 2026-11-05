@@ -3,9 +3,7 @@
 // Requer que tectonic.wasm e pdf.js estejam disponíveis em CDN com cabeçalhos CORS.
 // Se o Tectonic não estiver disponível, recorre ao servidor backend (Render).
 
-const BACKEND_URL = 'https://simple-compiler-ldj7.onrender.com/compile';
-
-let tectonic = null;
+import { runViaBackend } from './backend.mjs';
 let pdfjs = null;
 let ready = false;
 let initPromise = null;
@@ -112,7 +110,7 @@ export async function run(code) {
 
   if (!tectonic) {
     console.info(tectonicLoadError || 'Tectonic WASM não disponível.');
-    return await runViaBackend(code);
+    return await runViaBackend('latex', code);
   }
 
   try {
@@ -150,6 +148,6 @@ export async function run(code) {
   } catch (err) {
     // Se o Tectonic falhar na execução, tenta o backend como fallback
     console.warn('Tectonic execution failed, falling back to backend:', err.message);
-    return await runViaBackend(code);
+    return await runViaBackend('latex', code);
   }
 }

@@ -38,11 +38,22 @@ const DEFAULT_INIT_TIMEOUT_MS = 30000; // tempo padrão para baixar/inicializar 
 const WORKER_INIT_TIMEOUT_MS = 60000; // tempo máximo para criar o worker (ms)
 
 // Runtimes grandes (sqlite-wasm, webr) precisam de mais tempo para baixar.
+// Linguagens que executam no backend precisam de tempo extra para cold start.
 const INIT_TIMEOUT_BY_LANG = {
   sql: 120000,  // sqlite-wasm é grande (~several MB)
   r: 120000,    // webr é grande (~several MB)
   latex: 180000, // tectonic + pdf.js são grandes (~several MB)
+  c: 150000,    // backend cold start (Render free tier)
+  cpp: 150000,  // backend cold start
+  csharp: 150000, // backend cold start
+  java: 150000, // backend cold start
+  go: 150000,   // backend cold start
+  lean: 150000, // backend cold start
 };
+
+const BACKEND_LANGUAGES = new Set([
+  'c', 'cpp', 'csharp', 'java', 'go', 'lean', 'sql', 'latex',
+]);
 
 const LANGUAGE_MAP = {
   js: 'javascript',
@@ -51,6 +62,7 @@ const LANGUAGE_MAP = {
 
 const WASM_LANGUAGES = new Set([
   'python', 'javascript', 'typescript', 'lua', 'sql', 'r', 'latex', 'htmlcss',
+  'c', 'cpp', 'csharp', 'java', 'go', 'lean',
 ]);
 
 function runtimeKey(language) {
@@ -58,6 +70,9 @@ function runtimeKey(language) {
 }
 
 function initTimeoutFor(language) {
+  if (BACKEND_LANGUAGES.has(language)) {
+    return INIT_TIMEOUT_BY_LANG[language] || 150000;
+  }
   return INIT_TIMEOUT_BY_LANG[language] || DEFAULT_INIT_TIMEOUT_MS;
 }
 
@@ -66,28 +81,50 @@ function getApiUrl() {
 }
 
 async function wakeBackend() {
-  try {
-    await fetch(getApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: '', language: 'python' }),
-    });
-  } catch (_) {
-    // Ignore wake-up errors; the backend may be spinning down
+  // Tenta acordar o backend até 3 vezes com intervalo
+  for (let i = 0; i < 3; i++) {
+    try {
+      await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: '\\documentclass{article}\\begin{document}Hello\\end{document}', language: 'latex' }),
+      });
+      return; // Sucesso, não precisa tentar novamente
+    } catch (_) {
+      // Ignore wake-up errors; the backend may be spinning down
+      await new Promise(r => setTimeout(r, 2000)); // Espera 2s entre tentativas
+    }
   }
 }
 
 async function runViaBackend(code, language) {
-  const resp = await fetch(getApiUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, language }),
-  });
-  const data = await resp.json();
-  return {
-    output: data.output || '',
-    error: data.error || null,
-  };
+  // Tenta até 3 vezes com backoff exponencial
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      const resp = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      
+      const data = await resp.json();
+      return {
+        output: data.output || '',
+        error: data.error || null,
+      };
+    } catch (err) {
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 3000 * (attempt + 1))); // Espera 3s, 6s entre tentativas
+      } else {
+        throw err;
+      }
+    }
+  }
 }
 
 const workers = {}; // language -> Worker
@@ -157,7 +194,7 @@ function handleCodeKeydown(e) {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261104b', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261105b', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
@@ -227,7 +264,10 @@ function runInWorker(language, code) {
     }
 
     // Primeira execução de uma linguagem inclui o download do runtime WASM.
-    const timeoutMs = runtimeLoaded[language] ? EXEC_TIMEOUT_MS : initTimeoutFor(language);
+    // Linguagens backend mantêm timeout longo mesmo após runtime carregado.
+    const timeoutMs = (runtimeLoaded[language] && !BACKEND_LANGUAGES.has(language))
+      ? EXEC_TIMEOUT_MS
+      : initTimeoutFor(language);
     const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
 
     const timer = setTimeout(() => {
@@ -280,9 +320,9 @@ async function runCode() {
     wasmError = err;
   }
 
-  // Se o WASM falhou, recorre ao servidor backend
+  // Se o WASM falhou, recorre ao servidor backend (mensagem apenas no console)
   if (wasmError || (wasmResult && wasmResult.error)) {
-    runBtn.textContent = t(langKey, 'backendFallback');
+    console.info(`WASM falhou para '${language}', recorrendo ao servidor backend.`);
     try {
       const backendResult = await runViaBackend(code, language);
       if (backendResult.error) {

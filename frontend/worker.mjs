@@ -14,7 +14,12 @@ const RUNTIMES = {
   r: () => import(`./runtimes/r.mjs${CACHE_BUST}`),
   latex: () => import(`./runtimes/latex.mjs${CACHE_BUST}`),
   htmlcss: () => import(`./runtimes/htmlcss.mjs${CACHE_BUST}`),
-  // c, cpp, csharp, java, go, lean -> backend requerido
+  c: () => import(`./runtimes/c.mjs${CACHE_BUST}`),
+  cpp: () => import(`./runtimes/cpp.mjs${CACHE_BUST}`),
+  csharp: () => import(`./runtimes/csharp.mjs${CACHE_BUST}`),
+  java: () => import(`./runtimes/java.mjs${CACHE_BUST}`),
+  go: () => import(`./runtimes/go.mjs${CACHE_BUST}`),
+  lean: () => import(`./runtimes/lean.mjs${CACHE_BUST}`),
 };
 
 const runtimeCache = new Map();
