@@ -4,6 +4,7 @@
 // Se o Tectonic não estiver disponível, recorre ao servidor backend (Render).
 
 import { runViaBackend } from './backend.mjs';
+let tectonic = null;
 let pdfjs = null;
 let ready = false;
 let initPromise = null;
