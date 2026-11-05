@@ -1,6 +1,9 @@
 // runtimes/latex.mjs — Compilação LaTeX via Tectonic WASM + renderização PDF.js.
 // Execução em memória; sem acesso a arquivos ou rede do host.
 // Requer que tectonic.wasm e pdf.js estejam disponíveis em CDN com cabeçalhos CORS.
+// Se o Tectonic não estiver disponível, recorre ao servidor backend (Render).
+
+const BACKEND_URL = 'https://simple-compiler-ldj7.onrender.com/compile';
 
 let tectonic = null;
 let pdfjs = null;
@@ -25,7 +28,7 @@ async function initTectonic() {
       // Tenta próximo candidato
     }
   }
-  tectonicLoadError = 'Tectonic WASM não disponível em CDN. Instale @tectonic/tectonic ou forneça o arquivo tectonic.wasm localmente.';
+  tectonicLoadError = 'Tectonic WASM não disponível em CDN. Recorrendo ao servidor backend.';
   return false;
 }
 
@@ -70,15 +73,32 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+async function runViaBackend(code) {
+  try {
+    const resp = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, language: 'latex' }),
+    });
+    const data = await resp.json();
+    return {
+      output: data.output || '',
+      error: data.error || null,
+    };
+  } catch (err) {
+    return {
+      output: '',
+      error: err.message || String(err),
+    };
+  }
+}
+
 export async function run(code) {
   await init();
 
   if (!tectonic) {
     console.info(tectonicLoadError || 'Tectonic WASM não disponível.');
-    return {
-      output: '',
-      error: null,
-    };
+    return await runViaBackend(code);
   }
 
   try {
@@ -114,9 +134,8 @@ export async function run(code) {
       error: result.error || null,
     };
   } catch (err) {
-    return {
-      output: '',
-      error: err.message || String(err),
-    };
+    // Se o Tectonic falhar na execução, tenta o backend como fallback
+    console.warn('Tectonic execution failed, falling back to backend:', err.message);
+    return await runViaBackend(code);
   }
 }
