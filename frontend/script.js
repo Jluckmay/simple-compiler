@@ -66,28 +66,50 @@ function getApiUrl() {
 }
 
 async function wakeBackend() {
-  try {
-    await fetch(getApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: '', language: 'python' }),
-    });
-  } catch (_) {
-    // Ignore wake-up errors; the backend may be spinning down
+  // Tenta acordar o backend até 3 vezes com intervalo
+  for (let i = 0; i < 3; i++) {
+    try {
+      await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: '\\documentclass{article}\\begin{document}Hello\\end{document}', language: 'latex' }),
+      });
+      return; // Sucesso, não precisa tentar novamente
+    } catch (_) {
+      // Ignore wake-up errors; the backend may be spinning down
+      await new Promise(r => setTimeout(r, 2000)); // Espera 2s entre tentativas
+    }
   }
 }
 
 async function runViaBackend(code, language) {
-  const resp = await fetch(getApiUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, language }),
-  });
-  const data = await resp.json();
-  return {
-    output: data.output || '',
-    error: data.error || null,
-  };
+  // Tenta até 3 vezes com backoff exponencial
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      const resp = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      
+      const data = await resp.json();
+      return {
+        output: data.output || '',
+        error: data.error || null,
+      };
+    } catch (err) {
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 3000 * (attempt + 1))); // Espera 3s, 6s entre tentativas
+      } else {
+        throw err;
+      }
+    }
+  }
 }
 
 const workers = {}; // language -> Worker
@@ -157,7 +179,7 @@ function handleCodeKeydown(e) {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261105', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261105b', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
