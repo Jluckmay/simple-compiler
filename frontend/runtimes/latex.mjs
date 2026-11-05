@@ -72,40 +72,6 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
-async function runViaBackend(code) {
-  // Tenta até 3 vezes com backoff exponencial
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
-      
-      const resp = await fetch(BACKEND_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, language: 'latex' }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      
-      const data = await resp.json();
-      return {
-        output: data.output || '',
-        error: data.error || null,
-      };
-    } catch (err) {
-      if (attempt < 2) {
-        // Espera 3s, 6s entre tentativas
-        await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
-      } else {
-        return {
-          output: '',
-          error: `Backend indisponível após ${attempt + 1} tentativas. O servidor pode estar acordando (Render free tier). Tente novamente em alguns segundos.`,
-        };
-      }
-    }
-  }
-}
-
 export async function run(code) {
   await init();
 
