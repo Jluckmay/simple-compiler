@@ -12,7 +12,6 @@ async function initTectonic() {
   // Tenta importar o Tectonic WASM de CDNs conhecidos.
   const candidates = [
     'https://cdn.jsdelivr.net/npm/@tectonic/tectonic@latest/+esm',
-    'https://unpkg.com/@tectonic/tectonic@latest/+esm',
     'https://cdn.jsdelivr.net/npm/tectonic-wasm@latest/+esm',
   ];
   for (const url of candidates) {
