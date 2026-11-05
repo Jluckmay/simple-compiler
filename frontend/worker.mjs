@@ -3,7 +3,7 @@
 // externamente (script.js) quando o tempo limite é atingido, interrompendo
 // loops infinitos sem travar a thread principal da UI.
 
-const CACHE_BUST = '?v=20261104';
+const CACHE_BUST = '?v=20261104b';
 
 const RUNTIMES = {
   python: () => import(`./runtimes/python.mjs${CACHE_BUST}`),
