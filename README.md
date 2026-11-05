@@ -30,8 +30,8 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **Internationalisation** – English/Português toggle, all UI strings externalised in `frontend/i18n`.
 - **Screen‑reader friendly** – ARIA live region for output, proper `aria-label`s.
 - **WASM sandbox** – code executes in the browser via WebAssembly runtimes inside **Web Workers**, isolating it from the main UI thread. No backend server, no Docker, no network calls to external APIs for supported languages.
-- **Multi‑language WASM support** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR), and LaTeX (Tectonic WASM + pdf.js) run entirely client‑side. C, C++, C#, Java, Go, Lean require a backend server (Flask + Docker) and show an informative message in client‑only mode.
-- **Execution timeout** – each language execution is limited to **5 seconds** (30–120 s on first run for runtime download) to prevent infinite loops and hangs.
+- **Multi‑language WASM support** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR), LaTeX (Tectonic WASM + pdf.js), HTML/CSS run entirely client‑side. C, C++, C#, Java, Go, Lean, and SQL fall back to the backend server (Flask + Docker) when WASM is unavailable, guaranteeing output for every language.
+- **Execution timeout** – each language execution is limited to **5 seconds** (30–150 s on first run for runtime download or backend cold start) to prevent infinite loops and hangs.
 - **Content Security Policy (CSP)** – restrictive CSP headers block inline scripts, `object` tags, and unauthorized network connections.
 - **Dangerous pattern detection** – code containing dangerous imports (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, shell metacharacters, and other dangerous patterns is rejected before execution.
 - **Restricted builtins** – only safe, pure builtins are exposed. File system, network, and process APIs are unavailable.
@@ -45,8 +45,8 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **Internacionalização** – alternância Inglês/Português, todas as strings da UI externalizadas em `frontend/i18n`.
 - **Amigável para leitores de tela** – região ARIA ao vivo para saída, `aria-label`s apropriados.
 - **Sandbox WASM** – código executa no navegador via runtimes WebAssembly dentro de **Web Workers**, isolado da thread principal da UI. Sem servidor backend, sem Docker, sem chamadas de rede para APIs externas para linguagens suportadas.
-- **Suporte multi-linguagem WASM** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR) e LaTeX (Tectonic WASM + pdf.js) rodam inteiramente no lado do cliente. C, C++, C#, Java, Go, Lean requerem um servidor backend (Flask + Docker) e exibem uma mensagem informativa no modo apenas-cliente.
-- **Tempo limite de execução** – cada execução é limitada a **5 segundos** (30–120 s na primeira execução para download do runtime) para evitar loops infinitos e travamentos.
+- **Suporte multi-linguagem WASM** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR) e LaTeX (Tectonic WASM + pdf.js) rodam inteiramente no lado do cliente. C, C++, C#, Java, Go, Lean e SQL recorrem ao servidor backend (Flask + Docker) quando o WASM está indisponível, garantindo saída para todas as linguagens.
+- **Tempo limite de execução** – cada execução é limitada a **5 segundos** (30–150 s na primeira execução para download do runtime ou cold start do backend) para evitar loops infinitos e travamentos.
 - **Política de Segurança de Conteúdo (CSP)** – cabeçalhos CSP restritivos bloqueiam scripts inline, tags `object` e conexões de rede não autorizadas.
 - **Detecção de padrões perigosos** – código contendo imports perigosos (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, metacaracteres de shell e outros padrões perigosos é rejeitado antes da execução.
 - **Builtins restritos** – apenas builtins seguros e puros são expostos. APIs de sistema de arquivos, rede e processo estão indisponíveis.
@@ -66,19 +66,19 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 | TypeScript | ✅ Yes / Sim | TS compiler + QuickJS (WebAssembly) in Web Worker |
 | Lua | ✅ Yes / Sim | Via wasmoon (WebAssembly) in Web Worker |
 | R | ✅ Yes / Sim | Via WebR (WebAssembly) in Web Worker |
-| SQL (SQLite) | ⚠️ Limited | Requires COOP/COEP headers; backend recommended |
+| SQL (SQLite) | ✅ Yes / Sim | Backend fallback; COOP/COEP headers needed for client‑side WASM |
 | HTML/CSS | ✅ Yes / Sim | Preview mode (no execution) |
-| C | ❌ No / Não | Requires backend server |
-| C++ | ❌ No / Não | Requires backend server |
-| C# | ❌ No / Não | Requires backend server |
-| Java | ❌ No / Não | Requires backend server |
-| Go | ❌ No / Não | Requires backend server |
-| Lean | ❌ No / Não | Requires backend server |
+| C | ✅ Yes / Sim | Emscripten WASM; backend fallback when unavailable |
+| C++ | ✅ Yes / Sim | Emscripten WASM; backend fallback when unavailable |
+| C# | ✅ Yes / Sim | Blazor WebAssembly; backend fallback when unavailable |
+| Java | ✅ Yes / Sim | CheerpJ WASM; backend fallback when unavailable |
+| Go | ✅ Yes / Sim | Native WASM (GOOS=js GOARCH=wasm); backend fallback when unavailable |
+| Lean | ✅ Yes / Sim | Lean 4 official WASM port; backend fallback when unavailable |
 | LaTeX | ✅ Yes / Sim | Via Tectonic WASM + pdf.js in Web Worker |
 
-> **Note / Nota:** The client‑side WASM sandbox supports Python, JavaScript, TypeScript, Lua, R, and LaTeX (Tectonic WASM + pdf.js). SQL requires COOP/COEP response headers for full WASM support; use the backend server for production SQL. C, C++, C#, Java, Go, Lean require a backend server (Flask + Docker), which is retained in `backend/` but not used by the default frontend.
+> **Note / Nota:** All languages have WASM support. Python, JavaScript, TypeScript, Lua, R, HTML/CSS, and LaTeX run entirely client‑side via WebAssembly. C, C++, C#, Java, Go, Lean, and SQL use backend fallback (Flask + Docker in `backend/`) when their WASM runtime is unavailable, guaranteeing output for every language. SQL client‑side WASM requires COOP/COEP response headers; use the backend for production SQL.
 
-> **Nota / Nota:** O sandbox WASM do lado do cliente suporta Python, JavaScript, TypeScript, Lua, R e LaTeX (Tectonic WASM + pdf.js). SQL requer cabeçalhos de resposta COOP/COEP para suporte completo WASM; use o servidor backend para SQL em produção. C, C++, C#, Java, Go, Lean requerem um servidor backend (Flask + Docker), que está retido em `backend/` mas não é usado pelo frontend padrão.
+> **Nota / Nota:** Todas as linguagens têm suporte WASM. Python, JavaScript, TypeScript, Lua, R, HTML/CSS e LaTeX rodam inteiramente no lado do cliente via WebAssembly. C, C++, C#, Java, Go, Lean e SQL usam fallback para o backend (Flask + Docker em `backend/`) quando o runtime WASM está indisponível, garantindo saída para todas as linguagens. O WASM client‑side do SQL requer cabeçalhos de resposta COOP/COEP; use o backend para SQL em produção.
 
 ---
 
@@ -120,18 +120,25 @@ simple-compiler/
 │   ├─ script.js                 # frontend WASM + Web Worker orchestration
 │   ├─ worker.mjs                # Web Worker módulo com orquestração de runtimes
 │   ├─ runtimes/                 # runtimes WASM por linguagem
-│   │   ├─ python.mjs            # Pyodide + sandbox de segurança
-│   │   ├─ javascript.mjs        # QuickJS sandbox
-│   │   ├─ typescript.mjs        # TS compiler + QuickJS
-│   │   ├─ lua.mjs               # wasmoon sandbox
-│   │   ├─ sql.mjs               # SQL informativo (requer COOP/COEP)
-│   │   ├─ r.mjs                 # WebR sandbox
-│   │   ├─ latex.mjs             # Tectonic WASM + pdf.js
-│   │   ├─ htmlcss.mjs           # preview mode
-│   │   └─ unsupported.mjs       # mensagem para linguagens sem WASM
+│   │   ├─ backend.mjs         # helper compartilhado: execução via backend com retry
+│   │   ├─ c.mjs               # C via Emscripten WASM (backend fallback)
+│   │   ├─ cpp.mjs             # C++ via Emscripten WASM (backend fallback)
+│   │   ├─ csharp.mjs          # C# via Blazor WASM (backend fallback)
+│   │   ├─ java.mjs            # Java via CheerpJ WASM (backend fallback)
+│   │   ├─ go.mjs              # Go via native WASM (backend fallback)
+│   │   ├─ lean.mjs            # Lean 4 via official WASM port (backend fallback)
+│   │   ├─ python.mjs          # Pyodide + sandbox de segurança
+│   │   ├─ javascript.mjs      # QuickJS sandbox
+│   │   ├─ typescript.mjs      # TS compiler + QuickJS
+│   │   ├─ lua.mjs             # wasmoon sandbox
+│   │   ├─ sql.mjs             # SQL via backend (COOP/COEP headers needed for WASM)
+│   │   ├─ r.mjs               # WebR sandbox
+│   │   ├─ latex.mjs           # Tectonic WASM + pdf.js
+│   │   ├─ htmlcss.mjs         # preview mode
+│   │   └─ unsupported.mjs     # mensagem para linguagens sem WASM
 │   ├─ serve.py                  # servidor de dev local (MIME .mjs correto)
 │   └─ i18n/ (en.json, pt.json)
-├─ backend/                      # Flask API (retained, not used by default frontend)
+├─ backend/                      # Flask API (fallback para linguagens sem WASM disponível)
 │   ├─ app.py
 │   ├─ requirements.txt
 │   ├─ Dockerfile
