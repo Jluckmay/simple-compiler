@@ -172,6 +172,11 @@ body {
 }
 
 /* ===== Code Editor ===== */
+.code-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .shell-code {
   width: 100%;
   min-height: 240px;
@@ -193,6 +198,13 @@ body {
   opacity: 0.7;
 }
 
+.shell-code:empty::before {
+  content: attr(placeholder);
+  color: var(--text-muted);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .shell-code:hover {
   border-color: var(--text-dim);
 }
@@ -200,6 +212,57 @@ body {
 .shell-code:focus {
   border-color: var(--accent-red);
   box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+}
+
+/* ===== Autocomplete Dropdown ===== */
+.autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: var(--shadow);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.autocomplete.show {
+  display: block;
+}
+
+.autocomplete-item {
+  padding: 0.5rem 0.75rem;
+  color: var(--text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: var(--accent-red);
+  color: #ffffff;
+}
+
+.autocomplete-item .autocomplete-kind {
+  float: right;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 /* ===== Buttons ===== */
