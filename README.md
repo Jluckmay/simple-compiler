@@ -461,6 +461,26 @@ Basta abrir o link no navegador — nenhuma instalação ou servidor backend é 
 
 ---
 
+## Desktop Release / Versão Desktop
+
+**English:**
+Pre-built executables are available for Windows and Linux in the [GitHub Releases](https://github.com/Jluckmay/simple-compiler/releases) page.
+
+- **Windows**: `Simple Compiler-Windows-x64.exe` — double-click to run.
+- **Linux**: `Simple Compiler-Linux-x64` — `chmod +x Simple Compiler-Linux-x64 && ./Simple Compiler-Linux-x64`.
+
+The desktop app runs the compiler locally with a native window, including spellcheck for code comments and strings (English & Portuguese). No Docker or backend server is required for client-side languages.
+
+**Português:**
+Executáveis pré-compilados estão disponíveis para Windows e Linux na página de [Releases do GitHub](https://github.com/Jluckmay/simple-compiler/releases).
+
+- **Windows**: `Simple Compiler-Windows-x64.exe` — dê duplo-clique para executar.
+- **Linux**: `Simple Compiler-Linux-x64` — `chmod +x Simple Compiler-Linux-x64 && ./Simple Compiler-Linux-x64`.
+
+O aplicativo desktop executa o compilador localmente com uma janela nativa, incluindo corretor ortográfico para comentários e strings do código (Inglês e Português). Nenhum Docker ou servidor backend é necessário para linguagens client-side.
+
+---
+
 ## License / Licença
 
 **English:** This project is released under the **MIT License** – see the `LICENSE` file for details.
