@@ -45,7 +45,10 @@
           <option value="htmlcss" title="HTML/CSS">🌐 HTML/CSS</option>
         </select>
       </div>
-      <textarea id="code" rows="12" class="shell-code" data-i18n-placeholder="placeholder" placeholder="Write your code here..."></textarea>
+      <div id="code-wrapper" class="code-wrapper">
+        <div id="code" contenteditable="true" class="shell-code" data-i18n-placeholder="placeholder" placeholder="Write your code here..."></div>
+        <div id="autocomplete" class="autocomplete" role="listbox"></div>
+      </div>
       <button id="run" data-i18n="runButton" class="shell-btn shell-btn-primary">Run</button>
     </section>
 

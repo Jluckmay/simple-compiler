@@ -63,9 +63,492 @@ const WASM_LANGUAGES = new Set([
   'c', 'cpp', 'csharp', 'java', 'go', 'lean',
 ]);
 
-function runtimeKey(language) {
-  return LANGUAGE_MAP[language] || language;
+// Keyword lists per language for autocomplete
+const KEYWORDS = {
+  python: [
+    { word: 'def', kind: 'fn' }, { word: 'class', kind: 'class' },
+    { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' }, { word: 'elif', kind: 'kw' },
+    { word: 'for', kind: 'kw' }, { word: 'while', kind: 'kw' },
+    { word: 'try', kind: 'kw' }, { word: 'except', kind: 'kw' }, { word: 'finally', kind: 'kw' },
+    { word: 'import', kind: 'kw' }, { word: 'from', kind: 'kw' }, { word: 'as', kind: 'kw' },
+    { word: 'with', kind: 'kw' }, { word: 'return', kind: 'kw' }, { word: 'yield', kind: 'kw' },
+    { word: 'lambda', kind: 'kw' }, { word: 'None', kind: 'const' }, { word: 'True', kind: 'const' },
+    { word: 'False', kind: 'const' }, { word: 'and', kind: 'kw' }, { word: 'or', kind: 'kw' },
+    { word: 'not', kind: 'kw' }, { word: 'in', kind: 'kw' }, { word: 'is', kind: 'kw' },
+    { word: 'print', kind: 'fn' }, { word: 'len', kind: 'fn' }, { word: 'range', kind: 'fn' },
+    { word: 'str', kind: 'fn' }, { word: 'int', kind: 'fn' }, { word: 'float', kind: 'fn' },
+    { word: 'list', kind: 'fn' }, { word: 'dict', kind: 'fn' }, { word: 'set', kind: 'fn' },
+    { word: 'tuple', kind: 'fn' }, { word: 'open', kind: 'fn' }, { word: 'enumerate', kind: 'fn' },
+    { word: 'zip', kind: 'fn' }, { word: 'map', kind: 'fn' }, { word: 'filter', kind: 'fn' },
+    { word: 'sorted', kind: 'fn' }, { word: 'reversed', kind: 'fn' },
+  ],
+  javascript: [
+    { word: 'function', kind: 'fn' }, { word: 'const', kind: 'kw' }, { word: 'let', kind: 'kw' },
+    { word: 'var', kind: 'kw' }, { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' },
+    { word: 'for', kind: 'kw' }, { word: 'while', kind: 'kw' }, { word: 'do', kind: 'kw' },
+    { word: 'try', kind: 'kw' }, { word: 'catch', kind: 'kw' }, { word: 'finally', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'import', kind: 'kw' }, { word: 'export', kind: 'kw' },
+    { word: 'from', kind: 'kw' }, { word: 'async', kind: 'kw' }, { word: 'await', kind: 'kw' },
+    { word: 'class', kind: 'class' }, { word: 'new', kind: 'kw' }, { word: 'this', kind: 'kw' },
+    { word: 'null', kind: 'const' }, { word: 'undefined', kind: 'const' }, { word: 'true', kind: 'const' },
+    { word: 'false', kind: 'const' }, { word: 'typeof', kind: 'kw' }, { word: 'instanceof', kind: 'kw' },
+    { word: 'console', kind: 'obj' }, { word: 'log', kind: 'fn' }, { word: 'document', kind: 'obj' },
+    { word: 'window', kind: 'obj' }, { word: 'setTimeout', kind: 'fn' }, { word: 'setInterval', kind: 'fn' },
+    { word: 'Promise', kind: 'class' }, { word: 'JSON', kind: 'obj' }, { word: 'Array', kind: 'class' },
+    { word: 'Object', kind: 'class' }, { word: 'String', kind: 'class' }, { word: 'Number', kind: 'class' },
+    { word: 'Boolean', kind: 'class' },
+  ],
+  typescript: [
+    { word: 'function', kind: 'fn' }, { word: 'const', kind: 'kw' }, { word: 'let', kind: 'kw' },
+    { word: 'var', kind: 'kw' }, { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' },
+    { word: 'for', kind: 'kw' }, { word: 'while', kind: 'kw' }, { word: 'do', kind: 'kw' },
+    { word: 'try', kind: 'kw' }, { word: 'catch', kind: 'kw' }, { word: 'finally', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'import', kind: 'kw' }, { word: 'export', kind: 'kw' },
+    { word: 'from', kind: 'kw' }, { word: 'async', kind: 'kw' }, { word: 'await', kind: 'kw' },
+    { word: 'class', kind: 'class' }, { word: 'interface', kind: 'class' }, { word: 'type', kind: 'kw' },
+    { word: 'enum', kind: 'kw' }, { word: 'namespace', kind: 'kw' }, { word: 'new', kind: 'kw' },
+    { word: 'this', kind: 'kw' }, { word: 'null', kind: 'const' }, { word: 'undefined', kind: 'const' },
+    { word: 'true', kind: 'const' }, { word: 'false', kind: 'const' }, { word: 'typeof', kind: 'kw' },
+    { word: 'instanceof', kind: 'kw' }, { word: 'public', kind: 'kw' }, { word: 'private', kind: 'kw' },
+    { word: 'protected', kind: 'kw' }, { word: 'readonly', kind: 'kw' }, { word: 'static', kind: 'kw' },
+    { word: 'abstract', kind: 'kw' }, { word: 'implements', kind: 'kw' }, { word: 'extends', kind: 'kw' },
+    { word: 'console', kind: 'obj' }, { word: 'log', kind: 'fn' }, { word: 'Promise', kind: 'class' },
+    { word: 'Array', kind: 'class' }, { word: 'Object', kind: 'class' }, { word: 'String', kind: 'class' },
+    { word: 'Number', kind: 'class' }, { word: 'Boolean', kind: 'class' },
+  ],
+  c: [
+    { word: 'int', kind: 'type' }, { word: 'char', kind: 'type' }, { word: 'float', kind: 'type' },
+    { word: 'double', kind: 'type' }, { word: 'void', kind: 'kw' }, { word: 'main', kind: 'fn' },
+    { word: 'printf', kind: 'fn' }, { word: 'scanf', kind: 'fn' }, { word: 'include', kind: 'kw' },
+    { word: 'stdio', kind: 'obj' }, { word: 'stdlib', kind: 'obj' }, { word: 'string', kind: 'type' },
+    { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' }, { word: 'for', kind: 'kw' },
+    { word: 'while', kind: 'kw' }, { word: 'do', kind: 'kw' }, { word: 'switch', kind: 'kw' },
+    { word: 'case', kind: 'kw' }, { word: 'break', kind: 'kw' }, { word: 'continue', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'struct', kind: 'kw' }, { word: 'typedef', kind: 'kw' },
+    { word: 'sizeof', kind: 'kw' }, { word: 'NULL', kind: 'const' }, { word: 'true', kind: 'const' },
+    { word: 'false', kind: 'const' },
+  ],
+  cpp: [
+    { word: 'int', kind: 'type' }, { word: 'char', kind: 'type' }, { word: 'float', kind: 'type' },
+    { word: 'double', kind: 'type' }, { word: 'void', kind: 'kw' }, { word: 'bool', kind: 'type' },
+    { word: 'auto', kind: 'kw' }, { word: 'class', kind: 'class' }, { word: 'struct', kind: 'kw' },
+    { word: 'public', kind: 'kw' }, { word: 'private', kind: 'kw' }, { word: 'protected', kind: 'kw' },
+    { word: 'virtual', kind: 'kw' }, { word: 'override', kind: 'kw' }, { word: 'template', kind: 'kw' },
+    { word: 'typename', kind: 'kw' }, { word: 'namespace', kind: 'kw' }, { word: 'using', kind: 'kw' },
+    { word: 'std', kind: 'obj' }, { word: 'cout', kind: 'obj' }, { word: 'cin', kind: 'obj' },
+    { word: 'endl', kind: 'const' }, { word: 'vector', kind: 'class' }, { word: 'string', kind: 'class' },
+    { word: 'nullptr', kind: 'const' }, { word: 'true', kind: 'const' }, { word: 'false', kind: 'const' },
+    { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' }, { word: 'for', kind: 'kw' },
+    { word: 'while', kind: 'kw' }, { word: 'do', kind: 'kw' }, { word: 'switch', kind: 'kw' },
+    { word: 'case', kind: 'kw' }, { word: 'break', kind: 'kw' }, { word: 'continue', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'new', kind: 'kw' }, { word: 'delete', kind: 'kw' },
+    { word: 'include', kind: 'kw' }, { word: 'iostream', kind: 'obj' }, { word: 'algorithm', kind: 'obj' },
+  ],
+  csharp: [
+    { word: 'using', kind: 'kw' }, { word: 'namespace', kind: 'kw' }, { word: 'class', kind: 'class' },
+    { word: 'public', kind: 'kw' }, { word: 'private', kind: 'kw' }, { word: 'protected', kind: 'kw' },
+    { word: 'static', kind: 'kw' }, { word: 'void', kind: 'kw' }, { word: 'int', kind: 'type' },
+    { word: 'string', kind: 'type' }, { word: 'bool', kind: 'type' }, { word: 'true', kind: 'const' },
+    { word: 'false', kind: 'const' }, { word: 'null', kind: 'const' }, { word: 'if', kind: 'kw' },
+    { word: 'else', kind: 'kw' }, { word: 'for', kind: 'kw' }, { word: 'while', kind: 'kw' },
+    { word: 'do', kind: 'kw' }, { word: 'switch', kind: 'kw' }, { word: 'case', kind: 'kw' },
+    { word: 'break', kind: 'kw' }, { word: 'continue', kind: 'kw' }, { word: 'return', kind: 'kw' },
+    { word: 'new', kind: 'kw' }, { word: 'this', kind: 'kw' }, { word: 'base', kind: 'kw' },
+    { word: 'override', kind: 'kw' }, { word: 'virtual', kind: 'kw' }, { word: 'abstract', kind: 'kw' },
+    { word: 'interface', kind: 'kw' }, { word: 'enum', kind: 'kw' }, { word: 'struct', kind: 'kw' },
+    { word: 'var', kind: 'kw' }, { word: 'async', kind: 'kw' }, { word: 'await', kind: 'kw' },
+    { word: 'Task', kind: 'class' }, { word: 'Console', kind: 'obj' }, { word: 'WriteLine', kind: 'fn' },
+    { word: 'ReadLine', kind: 'fn' },
+  ],
+  java: [
+    { word: 'public', kind: 'kw' }, { word: 'class', kind: 'class' }, { word: 'static', kind: 'kw' },
+    { word: 'void', kind: 'kw' }, { word: 'main', kind: 'fn' }, { word: 'String', kind: 'type' },
+    { word: 'args', kind: 'var' }, { word: 'System', kind: 'obj' }, { word: 'out', kind: 'obj' },
+    { word: 'println', kind: 'fn' }, { word: 'int', kind: 'type' }, { word: 'boolean', kind: 'type' },
+    { word: 'true', kind: 'const' }, { word: 'false', kind: 'const' }, { word: 'null', kind: 'const' },
+    { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' }, { word: 'for', kind: 'kw' },
+    { word: 'while', kind: 'kw' }, { word: 'do', kind: 'kw' }, { word: 'switch', kind: 'kw' },
+    { word: 'case', kind: 'kw' }, { word: 'break', kind: 'kw' }, { word: 'continue', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'new', kind: 'kw' }, { word: 'this', kind: 'kw' },
+    { word: 'super', kind: 'kw' }, { word: 'extends', kind: 'kw' }, { word: 'implements', kind: 'kw' },
+    { word: 'interface', kind: 'kw' }, { word: 'abstract', kind: 'kw' }, { word: 'final', kind: 'kw' },
+    { word: 'import', kind: 'kw' }, { word: 'package', kind: 'kw' }, { word: 'try', kind: 'kw' },
+    { word: 'catch', kind: 'kw' }, { word: 'finally', kind: 'kw' }, { word: 'throw', kind: 'kw' },
+    { word: 'throws', kind: 'kw' }, { word: 'instanceof', kind: 'kw' }, { word: 'enum', kind: 'kw' },
+    { word: 'default', kind: 'kw' },
+  ],
+  go: [
+    { word: 'package', kind: 'kw' }, { word: 'import', kind: 'kw' }, { word: 'func', kind: 'fn' },
+    { word: 'main', kind: 'fn' }, { word: 'fmt', kind: 'obj' }, { word: 'Println', kind: 'fn' },
+    { word: 'Printf', kind: 'fn' }, { word: 'var', kind: 'kw' }, { word: 'const', kind: 'kw' },
+    { word: 'type', kind: 'kw' }, { word: 'struct', kind: 'kw' }, { word: 'interface', kind: 'kw' },
+    { word: 'if', kind: 'kw' }, { word: 'else', kind: 'kw' }, { word: 'for', kind: 'kw' },
+    { word: 'range', kind: 'kw' }, { word: 'switch', kind: 'kw' }, { word: 'case', kind: 'kw' },
+    { word: 'default', kind: 'kw' }, { word: 'break', kind: 'kw' }, { word: 'continue', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'go', kind: 'kw' }, { word: 'defer', kind: 'kw' },
+    { word: 'chan', kind: 'kw' }, { word: 'make', kind: 'fn' }, { word: 'new', kind: 'fn' },
+    { word: 'nil', kind: 'const' }, { word: 'true', kind: 'const' }, { word: 'false', kind: 'const' },
+    { word: 'int', kind: 'type' }, { word: 'string', kind: 'type' }, { word: 'bool', kind: 'type' },
+    { word: 'float64', kind: 'type' }, { word: 'error', kind: 'type' }, { word: 'append', kind: 'fn' },
+    { word: 'len', kind: 'fn' }, { word: 'cap', kind: 'fn' }, { word: 'copy', kind: 'fn' },
+    { word: 'delete', kind: 'fn' }, { word: 'close', kind: 'fn' }, { word: 'panic', kind: 'fn' },
+    { word: 'recover', kind: 'fn' },
+  ],
+  lua: [
+    { word: 'local', kind: 'kw' }, { word: 'function', kind: 'fn' }, { word: 'end', kind: 'kw' },
+    { word: 'if', kind: 'kw' }, { word: 'then', kind: 'kw' }, { word: 'else', kind: 'kw' },
+    { word: 'elseif', kind: 'kw' }, { word: 'for', kind: 'kw' }, { word: 'while', kind: 'kw' },
+    { word: 'do', kind: 'kw' }, { word: 'repeat', kind: 'kw' }, { word: 'until', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'break', kind: 'kw' }, { word: 'nil', kind: 'const' },
+    { word: 'true', kind: 'const' }, { word: 'false', kind: 'const' }, { word: 'and', kind: 'kw' },
+    { word: 'or', kind: 'kw' }, { word: 'not', kind: 'kw' }, { word: 'in', kind: 'kw' },
+    { word: 'print', kind: 'fn' }, { word: 'type', kind: 'fn' }, { word: 'tostring', kind: 'fn' },
+    { word: 'tonumber', kind: 'fn' }, { word: 'table', kind: 'obj' }, { word: 'insert', kind: 'fn' },
+    { word: 'remove', kind: 'fn' }, { word: 'sort', kind: 'fn' }, { word: 'pairs', kind: 'fn' },
+    { word: 'ipairs', kind: 'fn' }, { word: 'next', kind: 'fn' }, { word: 'require', kind: 'fn' },
+    { word: 'module', kind: 'kw' }, { word: 'package', kind: 'obj' }, { word: 'os', kind: 'obj' },
+    { word: 'io', kind: 'obj' }, { word: 'string', kind: 'obj' }, { word: 'math', kind: 'obj' },
+  ],
+  r: [
+    { word: 'library', kind: 'kw' }, { word: 'function', kind: 'fn' }, { word: 'if', kind: 'kw' },
+    { word: 'else', kind: 'kw' }, { word: 'for', kind: 'kw' }, { word: 'while', kind: 'kw' },
+    { word: 'repeat', kind: 'kw' }, { word: 'break', kind: 'kw' }, { word: 'next', kind: 'kw' },
+    { word: 'return', kind: 'kw' }, { word: 'NULL', kind: 'const' }, { word: 'TRUE', kind: 'const' },
+    { word: 'FALSE', kind: 'const' }, { word: 'NA', kind: 'const' }, { word: 'NaN', kind: 'const' },
+    { word: 'Inf', kind: 'const' }, { word: 'c', kind: 'fn' }, { word: 'list', kind: 'fn' },
+    { word: 'data.frame', kind: 'fn' }, { word: 'matrix', kind: 'fn' }, { word: 'array', kind: 'fn' },
+    { word: 'factor', kind: 'fn' }, { word: 'print', kind: 'fn' }, { word: 'summary', kind: 'fn' },
+    { word: 'plot', kind: 'fn' }, { word: 'hist', kind: 'fn' }, { word: 'mean', kind: 'fn' },
+    { word: 'sd', kind: 'fn' }, { word: 'sum', kind: 'fn' }, { word: 'min', kind: 'fn' },
+    { word: 'max', kind: 'fn' }, { word: 'length', kind: 'fn' }, { word: 'dim', kind: 'fn' },
+    { word: 'names', kind: 'fn' }, { word: 'head', kind: 'fn' }, { word: 'tail', kind: 'fn' },
+    { word: 'str', kind: 'fn' }, { word: 'class', kind: 'fn' }, { word: 'typeof', kind: 'fn' },
+    { word: 'seq', kind: 'fn' }, { word: 'rep', kind: 'fn' }, { word: 'sample', kind: 'fn' },
+    { word: 'sort', kind: 'fn' }, { word: 'order', kind: 'fn' },
+  ],
+  sql: [
+    { word: 'SELECT', kind: 'kw' }, { word: 'FROM', kind: 'kw' }, { word: 'WHERE', kind: 'kw' },
+    { word: 'INSERT', kind: 'kw' }, { word: 'INTO', kind: 'kw' }, { word: 'VALUES', kind: 'kw' },
+    { word: 'UPDATE', kind: 'kw' }, { word: 'SET', kind: 'kw' }, { word: 'DELETE', kind: 'kw' },
+    { word: 'CREATE', kind: 'kw' }, { word: 'TABLE', kind: 'kw' }, { word: 'DROP', kind: 'kw' },
+    { word: 'ALTER', kind: 'kw' }, { word: 'ADD', kind: 'kw' }, { word: 'COLUMN', kind: 'kw' },
+    { word: 'INDEX', kind: 'kw' }, { word: 'JOIN', kind: 'kw' }, { word: 'LEFT', kind: 'kw' },
+    { word: 'RIGHT', kind: 'kw' }, { word: 'INNER', kind: 'kw' }, { word: 'OUTER', kind: 'kw' },
+    { word: 'ON', kind: 'kw' }, { word: 'AS', kind: 'kw' }, { word: 'AND', kind: 'kw' },
+    { word: 'OR', kind: 'kw' }, { word: 'NOT', kind: 'kw' }, { word: 'IN', kind: 'kw' },
+    { word: 'LIKE', kind: 'kw' }, { word: 'BETWEEN', kind: 'kw' }, { word: 'IS', kind: 'kw' },
+    { word: 'NULL', kind: 'const' }, { word: 'GROUP', kind: 'kw' }, { word: 'BY', kind: 'kw' },
+    { word: 'HAVING', kind: 'kw' }, { word: 'ORDER', kind: 'kw' }, { word: 'ASC', kind: 'kw' },
+    { word: 'DESC', kind: 'kw' }, { word: 'LIMIT', kind: 'kw' }, { word: 'OFFSET', kind: 'kw' },
+    { word: 'DISTINCT', kind: 'kw' }, { word: 'COUNT', kind: 'fn' }, { word: 'SUM', kind: 'fn' },
+    { word: 'AVG', kind: 'fn' }, { word: 'MIN', kind: 'fn' }, { word: 'MAX', kind: 'fn' },
+    { word: 'INT', kind: 'type' }, { word: 'VARCHAR', kind: 'type' }, { word: 'TEXT', kind: 'type' },
+    { word: 'FLOAT', kind: 'type' }, { word: 'BOOLEAN', kind: 'type' }, { word: 'DATE', kind: 'type' },
+  ],
+  latex: [
+    { word: '\\documentclass', kind: 'kw' }, { word: '\\begin', kind: 'kw' }, { word: '\\end', kind: 'kw' },
+    { word: '\\section', kind: 'kw' }, { word: '\\subsection', kind: 'kw' }, { word: '\\subsubsection', kind: 'kw' },
+    { word: '\\paragraph', kind: 'kw' }, { word: '\\subparagraph', kind: 'kw' },
+    { word: '\\title', kind: 'kw' }, { word: '\\author', kind: 'kw' }, { word: '\\date', kind: 'kw' },
+    { word: '\\maketitle', kind: 'kw' }, { word: '\\tableofcontents', kind: 'kw' },
+    { word: '\\textbf', kind: 'fn' }, { word: '\\textit', kind: 'fn' }, { word: '\\underline', kind: 'fn' },
+    { word: '\\emph', kind: 'fn' }, { word: '\\item', kind: 'kw' }, { word: '\\enumerate', kind: 'kw' },
+    { word: '\\itemize', kind: 'kw' }, { word: '\\description', kind: 'kw' },
+    { word: '\\label', kind: 'kw' }, { word: '\\ref', kind: 'kw' }, { word: '\\cite', kind: 'kw' },
+    { word: '\\bibitem', kind: 'kw' }, { word: '\\footnote', kind: 'fn' }, { word: '\\index', kind: 'kw' },
+    { word: '\\usepackage', kind: 'kw' }, { word: '\\documentclass', kind: 'kw' },
+    { word: 'article', kind: 'const' }, { word: 'report', kind: 'const' }, { word: 'book', kind: 'const' },
+    { word: '\\input', kind: 'kw' }, { word: '\\include', kind: 'kw' }, { word: '\\newcommand', kind: 'kw' },
+    { word: '\\renewcommand', kind: 'kw' }, { word: '\\providecommand', kind: 'kw' },
+  ],
+  htmlcss: [
+    { word: 'div', kind: 'tag' }, { word: 'span', kind: 'tag' }, { word: 'p', kind: 'tag' },
+    { word: 'h1', kind: 'tag' }, { word: 'h2', kind: 'tag' }, { word: 'h3', kind: 'tag' },
+    { word: 'h4', kind: 'tag' }, { word: 'h5', kind: 'tag' }, { word: 'h6', kind: 'tag' },
+    { word: 'a', kind: 'tag' }, { word: 'ul', kind: 'tag' }, { word: 'ol', kind: 'tag' },
+    { word: 'li', kind: 'tag' }, { word: 'table', kind: 'tag' }, { word: 'tr', kind: 'tag' },
+    { word: 'td', kind: 'tag' }, { word: 'th', kind: 'tag' }, { word: 'form', kind: 'tag' },
+    { word: 'input', kind: 'tag' }, { word: 'button', kind: 'tag' }, { word: 'select', kind: 'tag' },
+    { word: 'option', kind: 'tag' }, { word: 'textarea', kind: 'tag' }, { word: 'label', kind: 'tag' },
+    { word: 'img', kind: 'tag' }, { word: 'br', kind: 'tag' }, { word: 'hr', kind: 'tag' },
+    { word: 'color', kind: 'prop' }, { word: 'background', kind: 'prop' }, { word: 'font-size', kind: 'prop' },
+    { word: 'font-family', kind: 'prop' }, { word: 'margin', kind: 'prop' }, { word: 'padding', kind: 'prop' },
+    { word: 'border', kind: 'prop' }, { word: 'display', kind: 'prop' }, { word: 'position', kind: 'prop' },
+    { word: 'flex', kind: 'prop' }, { word: 'grid', kind: 'prop' }, { word: 'width', kind: 'prop' },
+    { word: 'height', kind: 'prop' }, { word: 'text-align', kind: 'prop' }, { word: 'display', kind: 'prop' },
+  ],
+};
+
+// Autocomplete state
+let autocompleteActive = false;
+let autocompleteSelectedIndex = 0;
+let autocompleteMatches = [];
+let autocompletePrefix = '';
+let autocompleteStartPos = 0;
+
+function getCursorPosition(el) {
+  if (document.selection) {
+    el.focus();
+    const sel = document.selection.createRange();
+    sel.moveStart('character', -el.value.length);
+    return sel.text.length;
+  }
+  if (el.selectionStart !== undefined) {
+    return el.selectionStart;
+  }
+  return 0;
 }
+
+function setCursorPosition(el, pos) {
+  el.focus();
+  if (el.setSelectionRange) {
+    el.setSelectionRange(pos, pos);
+  }
+}
+
+function getCurrentWord(text, pos) {
+  // Find the start of the current word (backwards from cursor)
+  let start = pos;
+  while (start > 0 && /[\w\\]/.test(text[start - 1])) {
+    start--;
+  }
+  return text.substring(start, pos);
+}
+
+function showAutocomplete(language, code, cursorPos) {
+  const prefix = getCurrentWord(code, cursorPos);
+  if (!prefix || prefix.length < 1) {
+    hideAutocomplete();
+    return;
+  }
+
+  const keywords = KEYWORDS[language] || [];
+  const matches = keywords.filter(k =>
+    k.word.toLowerCase().startsWith(prefix.toLowerCase())
+  );
+
+  if (matches.length === 0) {
+    hideAutocomplete();
+    return;
+  }
+
+  autocompleteMatches = matches;
+  autocompleteSelectedIndex = 0;
+  autocompletePrefix = prefix;
+  autocompleteStartPos = cursorPos - prefix.length;
+  autocompleteActive = true;
+
+  renderAutocomplete();
+}
+
+function renderAutocomplete() {
+  const container = document.getElementById('autocomplete');
+  const codeEl = document.getElementById('code');
+  if (!container || !codeEl) return;
+
+  // Position the dropdown near the cursor
+  const rect = codeEl.getBoundingClientRect();
+  const wrapperRect = document.getElementById('code-wrapper').getBoundingClientRect();
+
+  // Simple positioning: below the code editor
+  container.style.top = '100%';
+  container.style.left = '0';
+  container.style.right = '0';
+  container.style.width = (wrapperRect.width) + 'px';
+
+  const itemsHtml = autocompleteMatches.map((match, i) => {
+    const isSelected = i === autocompleteSelectedIndex;
+    const highlightedWord = match.word.replace(
+      new RegExp(`(${autocompletePrefix})`, 'gi'),
+      '<strong>$1</strong>'
+    );
+    return `
+      <div class="autocomplete-item ${isSelected ? 'selected' : ''}" data-index="${i}">
+        <span>${highlightedWord}</span>
+        <span class="autocomplete-kind">${match.kind}</span>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = itemsHtml;
+  container.classList.add('show');
+}
+
+function hideAutocomplete() {
+  autocompleteActive = false;
+  autocompleteMatches = [];
+  autocompleteSelectedIndex = 0;
+  autocompletePrefix = '';
+  autocompleteStartPos = 0;
+  const container = document.getElementById('autocomplete');
+  if (container) {
+    container.classList.remove('show');
+    container.innerHTML = '';
+  }
+}
+
+function insertSuggestion(index) {
+  const match = autocompleteMatches[index];
+  if (!match) return;
+
+  const codeEl = document.getElementById('code');
+  const text = codeEl.textContent;
+  const before = text.substring(0, autocompleteStartPos);
+  const after = text.substring(autocompleteStartPos + autocompletePrefix.length);
+  const newText = before + match.word + after;
+
+  codeEl.textContent = newText;
+  setCursorPosition(codeEl, autocompleteStartPos + match.word.length);
+  hideAutocomplete();
+}
+
+function handleCodeKeydown(e) {
+  const codeEl = document.getElementById('code');
+
+  // Autocomplete navigation
+  if (autocompleteActive) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      autocompleteSelectedIndex = (autocompleteSelectedIndex + 1) % autocompleteMatches.length;
+      renderAutocomplete();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      autocompleteSelectedIndex = (autocompleteSelectedIndex - 1 + autocompleteMatches.length) % autocompleteMatches.length;
+      renderAutocomplete();
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      insertSuggestion(autocompleteSelectedIndex);
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hideAutocomplete();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      insertSuggestion(autocompleteSelectedIndex);
+      return;
+    }
+    // If typing a regular character, keep autocomplete active (will be re-evaluated on input)
+    if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      return; // Let input handler deal with it
+    }
+  }
+
+  // Original Tab handling (only when autocomplete is not active)
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = getCursorPosition(codeEl);
+    const end = start; // single cursor
+    const value = codeEl.textContent;
+    codeEl.textContent = value.substring(0, start) + '  ' + value.substring(end);
+    setCursorPosition(codeEl, start + 2);
+    return;
+  }
+}
+
+function handleCodeInput(e) {
+  const codeEl = e.target;
+  const text = codeEl.textContent;
+  const pos = getCursorPosition(codeEl);
+  const language = document.getElementById('language').value;
+  const key = runtimeKey(language);
+
+  // Show autocomplete when typing word characters
+  if (/[\w\\]/.test(e.key) || e.inputType === 'insertFromPaste') {
+    showAutocomplete(key, text, pos);
+  } else if (e.key === ' ' || e.key === '(' || e.key === '[' || e.key === '{' || e.key === '.' || e.key === ':') {
+    hideAutocomplete();
+  }
+}
+
+function t(langKey, key) {
+  return i18n[langKey][key] || key;
+}
+
+async function runCode() {
+  const codeEl = document.getElementById('code');
+  const code = codeEl.textContent;
+  const language = document.getElementById('language').value;
+  const resultEl = document.getElementById('result');
+  const runBtn = document.getElementById('run');
+  const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
+  resultEl.textContent = '';
+
+  if (!code.trim()) {
+    resultEl.textContent = '';
+    return;
+  }
+
+  const key = runtimeKey(language);
+  if (!WASM_LANGUAGES.has(key)) {
+    console.info(`A linguagem '${language}' não é suportada no modo WASM.`);
+    runBtn.disabled = false;
+    runBtn.textContent = t(langKey, 'runButton');
+    return;
+  }
+
+  let wasmResult = null;
+  let wasmError = null;
+
+  try {
+    runBtn.disabled = true;
+    runBtn.textContent = t(langKey, 'loadingRuntime');
+
+    wasmResult = await runInWorker(key, code);
+  } catch (err) {
+    wasmError = err;
+  }
+
+  // Se o WASM falhou, recorre ao servidor backend (mensagem apenas no console)
+  if (wasmError || (wasmResult && wasmResult.error)) {
+    console.info(`WASM falhou para '${language}', recorrendo ao servidor backend.`);
+    try {
+      const backendResult = await runViaBackend(code, language);
+      if (backendResult.error) {
+        resultEl.textContent = t(langKey, 'backendError') + ': ' + backendResult.error;
+      } else if (backendResult.output) {
+        resultEl.textContent = backendResult.output;
+      } else {
+        resultEl.textContent = '(no output)';
+      }
+    } catch (backendErr) {
+      resultEl.textContent = t(langKey, 'backendError') + ': ' + backendErr.message;
+    }
+  } else if (wasmResult && wasmResult.output) {
+    resultEl.textContent = wasmResult.output;
+  } else {
+    resultEl.textContent = '(no output)';
+  }
+
+  runBtn.disabled = false;
+  runBtn.textContent = t(langKey, 'runButton');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadThemeFromPref();
+  loadLangFromPref();
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  document.getElementById('lang-toggle').addEventListener('click', toggleLang);
+  const codeEl = document.getElementById('code');
+  codeEl.addEventListener('keydown', handleCodeKeydown);
+  codeEl.addEventListener('input', handleCodeInput);
+  // Hide autocomplete when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#code-wrapper')) {
+      hideAutocomplete();
+    }
+  });
+  document.getElementById('run').addEventListener('click', runCode);
+
+  // Acorda o servidor backend em segundo plano (Render free tier hiberna após inatividade)
+  wakeBackend();
+});
 
 function initTimeoutFor(language) {
   if (BACKEND_LANGUAGES.has(language)) {
@@ -137,7 +620,14 @@ function setLang(lang) {
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
-    if (i18n[lang][key]) el.placeholder = i18n[lang][key];
+    if (i18n[lang][key]) {
+      // For contenteditable elements, update the placeholder attribute which is used via CSS :empty::before
+      el.setAttribute('placeholder', i18n[lang][key]);
+      // If the element is empty, clear its text content to show placeholder
+      if (!el.textContent.trim()) {
+        el.textContent = '';
+      }
+    }
   });
 }
 
