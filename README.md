@@ -11,6 +11,7 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 ## Table of Contents / Sumário
 
 - [Features / Recursos](#features--recursos)
+- [Editor Features / Recursos do Editor](#editor-features--recursos-do-editor)
 - [Supported Languages / Linguagens Suportadas](#supported-languages--linguagens-suportadas)
 - [Security Model / Modelo de Segurança](#security-model--modelo-de-segurança)
 - [Project Structure / Estrutura do Projeto](#project-structure--estrutura-do-projeto)
@@ -32,6 +33,7 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **WASM sandbox** – code executes in the browser via WebAssembly runtimes inside **Web Workers**, isolating it from the main UI thread. No backend server, no Docker, no network calls to external APIs for supported languages.
 - **Multi‑language WASM support** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR), LaTeX (Tectonic WASM + pdf.js), HTML/CSS run entirely client‑side. C, C++, C#, Java, Go, Lean, and SQL fall back to the backend server (Flask + Docker) when WASM is unavailable, guaranteeing output for every language.
 - **Execution timeout** – each language execution is limited to **5 seconds** (30–150 s on first run for runtime download or backend cold start) to prevent infinite loops and hangs.
+- **Autocomplete** – keyword-based code completion for all supported languages, with keyboard navigation (ArrowUp/Down to select, Enter/Tab to insert, Escape to close) and click-outside-to-dismiss.
 - **Content Security Policy (CSP)** – restrictive CSP headers block inline scripts, `object` tags, and unauthorized network connections.
 - **Dangerous pattern detection** – code containing dangerous imports (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, shell metacharacters, and other dangerous patterns is rejected before execution.
 - **Restricted builtins** – only safe, pure builtins are exposed. File system, network, and process APIs are unavailable.
@@ -47,6 +49,7 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **Sandbox WASM** – código executa no navegador via runtimes WebAssembly dentro de **Web Workers**, isolado da thread principal da UI. Sem servidor backend, sem Docker, sem chamadas de rede para APIs externas para linguagens suportadas.
 - **Suporte multi-linguagem WASM** – Python (Pyodide), JavaScript/TypeScript (QuickJS), Lua (wasmoon), R (WebR) e LaTeX (Tectonic WASM + pdf.js) rodam inteiramente no lado do cliente. C, C++, C#, Java, Go, Lean e SQL recorrem ao servidor backend (Flask + Docker) quando o WASM está indisponível, garantindo saída para todas as linguagens.
 - **Tempo limite de execução** – cada execução é limitada a **5 segundos** (30–150 s na primeira execução para download do runtime ou cold start do backend) para evitar loops infinitos e travamentos.
+- **Autocomplete** – conclusão de código baseada em palavras-chave para todas as linguagens suportadas, com navegação por teclado (ArrowUp/Down para selecionar, Enter/Tab para inserir, Escape para fechar) e clique fora para descartar.
 - **Política de Segurança de Conteúdo (CSP)** – cabeçalhos CSP restritivos bloqueiam scripts inline, tags `object` e conexões de rede não autorizadas.
 - **Detecção de padrões perigosos** – código contendo imports perigosos (`os`, `subprocess`, `sys`, `socket`, `urllib`, `requests`, `shutil`, `pathlib`, `ctypes`, `pickle`, `sqlite3`, etc.), `eval()`, `exec()`, `compile()`, `open()`, `__import__`, metacaracteres de shell e outros padrões perigosos é rejeitado antes da execução.
 - **Builtins restritos** – apenas builtins seguros e puros são expostos. APIs de sistema de arquivos, rede e processo estão indisponíveis.
@@ -54,6 +57,28 @@ Um **compilador multi‑linguagem baseado na web** que executa código do usuár
 - **Sanitização de erros** – mensagens de erro são limpas de informações sensíveis antes de serem retornadas à UI.
 - **Pipeline de CI** – GitHub Actions executa testes unitários a cada push.
 - **Pronto para produção** – implantável no **GitHub Pages** como site estático.
+
+---
+
+## Editor Features / Recursos do Editor
+
+**English:**
+- **Contenteditable editor** – modern code editor with rich text editing support (replaces traditional textarea).
+- **Keyword autocomplete** – language-specific keyword suggestions appear as you type, with type indicators (fn, kw, type, const, class, obj, var, tag, prop).
+- **Keyboard navigation** – ArrowUp/Down to cycle through suggestions, Enter/Tab to insert, Escape to close.
+- **Smart triggering** – autocomplete activates automatically when typing word characters; dismissed on space, punctuation, or click outside.
+- **Highlighted matches** – the typed prefix is highlighted in bold within each suggestion.
+- **Tab indentation** – pressing Tab inserts 2 spaces (or inserts the selected autocomplete suggestion when active).
+- **Favicon** – modern minimalist icon with gradient accent and dark background.
+
+**Português:**
+- **Editor contenteditable** – editor de código moderno com suporte a edição de texto avançado (substitui o textarea tradicional).
+- **Autocomplete de palavras-chave** – sugestões específicas de cada idioma aparecem ao digitar, com indicadores de tipo (fn, kw, type, const, class, obj, var, tag, prop).
+- **Navegação por teclado** – ArrowUp/Down para navegar pelas sugestões, Enter/Tab para inserir, Escape para fechar.
+- **Disparo inteligente** – autocomplete é ativado automaticamente ao digitar caracteres de palavra; descartado ao pressionar espaço, pontuação ou clicar fora.
+- **Destaque de correspondências** – o prefixo digitado é destacado em negrito dentro de cada sugestão.
+- **Indentação com Tab** – pressionar Tab insere 2 espaços (ou insere a sugestão selecionada quando o autocomplete está ativo).
+- **Favicon** – ícone moderno e minimalista com gradiente e fundo escuro.
 
 ---
 
@@ -117,7 +142,8 @@ simple-compiler/
 ├─ frontend/                     # static site / site estático (HTML/CSS/JS)
 │   ├─ index.html                # HTML com CSP e carregamento de runtimes WASM via CDN
 │   ├─ style.css
-│   ├─ script.js                 # frontend WASM + Web Worker orchestration
+│   ├─ script.js                 # frontend WASM + Web Worker orchestration + autocomplete
+│   ├─ favicon.svg               # modern compiler icon
 │   ├─ worker.mjs                # Web Worker módulo com orquestração de runtimes
 │   ├─ runtimes/                 # runtimes WASM por linguagem
 │   │   ├─ backend.mjs         # helper compartilhado: execução via backend com retry
@@ -242,11 +268,31 @@ Veja o arquivo [LICENSE](LICENSE).
 ```
 simple-compiler/
 ├─ frontend/                     # static site / site estático (HTML/CSS/JS)
-│   ├─ index.html
+│   ├─ index.html                # HTML com CSP e carregamento de runtimes WASM via CDN
 │   ├─ style.css
-│   ├─ script.js
+│   ├─ script.js                 # frontend WASM + Web Worker orchestration + autocomplete
+│   ├─ favicon.svg               # modern compiler icon
+│   ├─ worker.mjs                # Web Worker módulo com orquestração de runtimes
+│   ├─ runtimes/                 # runtimes WASM por linguagem
+│   │   ├─ backend.mjs         # helper compartilhado: execução via backend com retry
+│   │   ├─ c.mjs               # C via Emscripten WASM (backend fallback)
+│   │   ├─ cpp.mjs             # C++ via Emscripten WASM (backend fallback)
+│   │   ├─ csharp.mjs          # C# via Blazor WASM (backend fallback)
+│   │   ├─ java.mjs            # Java via CheerpJ WASM (backend fallback)
+│   │   ├─ go.mjs              # Go via native WASM (backend fallback)
+│   │   ├─ lean.mjs            # Lean 4 via official WASM port (backend fallback)
+│   │   ├─ python.mjs          # Pyodide + sandbox de segurança
+│   │   ├─ javascript.mjs      # QuickJS sandbox
+│   │   ├─ typescript.mjs      # TS compiler + QuickJS
+│   │   ├─ lua.mjs             # wasmoon sandbox
+│   │   ├─ sql.mjs             # SQL via backend (COOP/COEP headers needed for WASM)
+│   │   ├─ r.mjs               # WebR sandbox
+│   │   ├─ latex.mjs           # Tectonic WASM + pdf.js
+│   │   ├─ htmlcss.mjs         # preview mode
+│   │   └─ unsupported.mjs     # mensagem para linguagens sem WASM
+│   ├─ serve.py                  # servidor de dev local (MIME .mjs correto)
 │   └─ i18n/ (en.json, pt.json)
-├─ backend/                      # Flask API
+├─ backend/                      # Flask API (fallback para linguagens sem WASM disponível)
 │   ├─ app.py
 │   ├─ requirements.txt
 │   ├─ Dockerfile
@@ -254,7 +300,7 @@ simple-compiler/
 │   └─ tests/ test_app.py
 ├─ .github/                     # CI workflow / fluxo de CI
 │   └─ workflows/ ci.yml
-├─ render.yaml                   # Render service definition
+├─ render.yaml                   # Render service definition (backend, optional)
 ├─ README.md
 └─ LICENSE
 ```
