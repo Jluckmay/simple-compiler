@@ -669,18 +669,6 @@ function toggleLang() {
   setLang(lang);
 }
 
-function handleCodeKeydown(e) {
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    const textarea = e.target;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const value = textarea.value;
-    textarea.value = value.substring(0, start) + '  ' + value.substring(end);
-    textarea.selectionStart = textarea.selectionEnd = start + 2;
-  }
-}
-
 function createWorker(language) {
   const w = new Worker('worker.mjs?v=20261105b', { type: 'module' });
   w.language = language;
