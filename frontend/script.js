@@ -550,6 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
   wakeBackend();
 });
 
+function runtimeKey(language) {
+  return LANGUAGE_MAP[language] || language;
+}
+
 function initTimeoutFor(language) {
   if (BACKEND_LANGUAGES.has(language)) {
     return INIT_TIMEOUT_BY_LANG[language] || 150000;
