@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r desktop/requirements.txt
+          pip install pyinstaller
+      - name: Build Windows executable
+        run: |
+          cd desktop
+          python -m PyInstaller pyinstaller.spec --noconfirm --clean
+      - name: Rename artifact
+        run: |
+          cd desktop/dist
+          mv "Simple Compiler.exe" "Simple Compiler-Windows-x64.exe"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: desktop/dist/Simple Compiler-Windows-x64.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r desktop/requirements.txt
+          pip install pyinstaller
+      - name: Build Linux executable
+        run: |
+          cd desktop
+          python -m PyInstaller pyinstaller.spec --noconfirm --clean
+      - name: Rename artifact
+        run: |
+          cd desktop/dist
+          mv "Simple Compiler" "Simple Compiler-Linux-x64"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: desktop/dist/Simple Compiler-Linux-x64
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+          path: dist
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binary
+          path: dist
+      - name: Make Linux binary executable
+        run: chmod +x dist/Simple Compiler-Linux-x64
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Simple Compiler ${{ github.ref_name }}
+          body: |
+            ## Simple Compiler ${{ github.ref_name }}
+            
+            ### Desktop Executables
+            - **Windows**: `Simple Compiler-Windows-x64.exe`
+            - **Linux**: `Simple Compiler-Linux-x64`
+            
+            ### Features
+            - Local execution of all WebAssembly runtimes
+            - Spell check for code comments and strings (English & Portuguese)
+            - Code autocomplete with keyboard navigation
+            - No backend server required for client-side languages
+            
+            ### How to Use
+            - Windows: Double-click `Simple Compiler-Windows-x64.exe`
+            - Linux: `./Simple Compiler-Linux-x64` (chmod +x first)
+            
+            ### Languages Supported
+            Python, JavaScript, TypeScript, Lua, R, LaTeX, HTML/CSS (client-side WASM)
+            C, C++, C#, Java, Go, Lean, SQL (backend fallback via /api/compile)
+          files: |
+            dist/Simple Compiler-Windows-x64.exe
+            dist/Simple Compiler-Linux-x64
