@@ -68,15 +68,33 @@ export async function run(code) {
   await init();
   const vm = quickjs.newContext();
   try {
+    // Set up console.log shim and output capture
+    vm.evalCode(`globalThis.__output = '';`);
+    vm.evalCode(`
+      globalThis.console = {
+        log: (...args) => { globalThis.__output += args.join(' ') + '\\n'; },
+        error: (...args) => { globalThis.__output += args.join(' ') + '\\n'; },
+        warn: (...args) => { globalThis.__output += args.join(' ') + '\\n'; },
+        info: (...args) => { globalThis.__output += args.join(' ') + '\\n'; }
+      };
+    `);
+
     const result = vm.evalCode(code);
+
+    // Retrieve captured console output
+    const outResult = vm.evalCode(`globalThis.__output`);
+    const captured = vm.dump(outResult);
+    outResult.dispose();
+
     if (result.error) {
       const msg = vm.dump(result.error);
       result.error.dispose();
-      return { output: "", error: msg || String(result.error) };
+      return { output: captured || "", error: msg || String(result.error) };
     }
+
     const output = vm.dump(result.value);
     result.value.dispose();
-    return { output: output == null ? "" : String(output), error: null };
+    return { output: (captured || "") + (output == null ? "" : String(output)), error: null };
   } finally {
     vm.dispose();
   }

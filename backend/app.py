@@ -88,7 +88,7 @@ LANG_CONFIG = {
     },
     "ts": {
         "image": "node:20-slim",
-        "run": lambda src: ["ts-node", src],
+        "run": lambda src: ["node", "./ts-run.js", src],
         "ext": ".ts",
     },
     "sql": {
@@ -248,6 +248,11 @@ def execute_code(cfg, src_path):
     # Clean up temporary artefacts
     if os.path.exists(src_path):
         os.remove(src_path)
+    # Clean up TypeScript runner script if it was created
+    if language == 'ts':
+        runner_path = os.path.join(os.path.dirname(src_path), 'ts-run.js')
+        if os.path.exists(runner_path):
+            os.remove(runner_path)
     if cfg.get('compile') and os.path.exists(src_path + "_out"):
         os.remove(src_path + "_out")
     return out, err
@@ -370,6 +375,13 @@ def compile_code():
         required_path = os.path.join(os.path.dirname(src_path), required_filename)
         os.rename(src_path, required_path)
         src_path = required_path
+    # For TypeScript backend fallback, write the runner script alongside the source
+    if language == 'ts':
+        runner_path = os.path.join(os.path.dirname(src_path), 'ts-run.js')
+        with open(os.path.join(os.path.dirname(__file__), 'ts-run.js'), 'r') as f:
+            runner_content = f.read()
+        with open(runner_path, 'w') as f:
+            f.write(runner_content)
     # Execute safely
     stdout, stderr = execute_code(cfg, src_path)
     # Sanitize error messages to not reveal system paths

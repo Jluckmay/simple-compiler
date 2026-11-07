@@ -846,7 +846,7 @@ function toggleLang() {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261110', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261111', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
