@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     texlive-latex-base \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g ts-node
+    && npm install -g ts-node typescript
 
 # Install Python dependencies
 COPY backend/requirements.txt /app/requirements.txt

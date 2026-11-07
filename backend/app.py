@@ -245,6 +245,18 @@ def execute_code(cfg, src_path, language=None):
             out, err = run_subprocess(exec_cmd, input_data=exec_input, cwd=os.path.dirname(src_path))
     else:
         out, err = run_subprocess(exec_cmd, input_data=exec_input, cwd=os.path.dirname(src_path))
+
+    # For LaTeX, embed the generated PDF as a base64 data URL in the output
+    if language == 'latex':
+        pdf_path = src_path.rsplit('.', 1)[0] + '.pdf'
+        if os.path.exists(pdf_path):
+            import base64
+            with open(pdf_path, 'rb') as f:
+                pdf_b64 = base64.b64encode(f.read()).decode('ascii')
+            pdf_data_url = f'data:application/pdf;base64,{pdf_b64}'
+            out = (out + '\n' + pdf_data_url).strip() if out else pdf_data_url
+            os.remove(pdf_path)
+
     # Clean up temporary artefacts
     if os.path.exists(src_path):
         os.remove(src_path)

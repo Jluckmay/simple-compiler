@@ -652,16 +652,17 @@ async function runCode() {
         const pdfViewer = document.getElementById('pdf-viewer');
         if (pdfViewer) pdfViewer.style.display = 'none';
       } else if (backendResult.output) {
-        resultEl.textContent = backendResult.output;
         // Check for PDF data URL in backend output (LaTeX fallback)
         const pdfMatch = backendResult.output.match(/data:application\/pdf;base64,[A-Za-z0-9+/=]+/);
         const pdfViewer = document.getElementById('pdf-viewer');
         const pdfFrame = document.getElementById('pdf-frame');
         if (pdfMatch && pdfViewer && pdfFrame) {
+          resultEl.textContent = '';
           pdfFrame.src = pdfMatch[0];
           pdfViewer.style.display = 'block';
-        } else if (pdfViewer) {
-          pdfViewer.style.display = 'none';
+        } else {
+          resultEl.textContent = backendResult.output;
+          if (pdfViewer) pdfViewer.style.display = 'none';
         }
       } else {
         resultEl.textContent = '(no output)';

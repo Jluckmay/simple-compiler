@@ -1,39 +1,9 @@
-// ts-run.js — Wrapper to run TypeScript via Node.js with proper ts.sys configuration
+// ts-run.js — Wrapper to run TypeScript via Node.js.
 // Used by the backend as a fallback when WASM TypeScript runtime is unavailable.
+// Uses ts.createSourceFile + ts.createPrinter (stable API) instead of
+// ts.transpileModule which can break with newer TypeScript versions.
 
 const ts = require('typescript');
-
-// Configure minimal ts.sys for the backend environment (ts-node needs it)
-if (!ts.sys) ts.sys = {};
-if (!ts.sys.fileExists) ts.sys.fileExists = (fileName) => {
-  try {
-    require('fs').accessSync(fileName);
-    return true;
-  } catch (_) {
-    return false;
-  }
-};
-if (!ts.sys.readFile) ts.sys.readFile = (fileName) => {
-  try {
-    return require('fs').readFileSync(fileName, 'utf8');
-  } catch (_) {
-    return undefined;
-  }
-};
-if (!ts.sys.writeFile) ts.sys.writeFile = () => {};
-if (!ts.sys.getCurrentDirectory) ts.sys.getCurrentDirectory = () => process.cwd();
-if (!ts.sys.useCaseSensitiveFileNames) ts.sys.useCaseSensitiveFileNames = true;
-if (!ts.sys.getNewLine) ts.sys.getNewLine = () => '\n';
-if (!ts.sys.createHash) ts.sys.createHash = () => ({ update: () => {}, digest: () => '' });
-if (!ts.sys.realpath) ts.sys.realpath = (p) => p;
-if (!ts.sys.getFileSize) ts.sys.getFileSize = () => -1;
-if (!ts.sys.deleteFile) ts.sys.deleteFile = () => false;
-if (!ts.sys.createDirectory) ts.sys.createDirectory = () => {};
-if (!ts.sys.readDirectory) ts.sys.readDirectory = () => [];
-if (!ts.sys.getModifiedTime) ts.sys.getModifiedTime = () => 0;
-if (!ts.sys.setModifiedTime) ts.sys.setModifiedTime = () => {};
-if (!ts.sys.createGetCanonicalFileName) ts.sys.createGetCanonicalFileName = (p) => p;
-
 const fs = require('fs');
 const srcPath = process.argv[2];
 
@@ -44,15 +14,10 @@ if (!srcPath) {
 
 const code = fs.readFileSync(srcPath, 'utf8');
 
-// Transpile TypeScript to JavaScript
-const result = ts.transpileModule(code, {
-  compilerOptions: {
-    module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES2020,
-    strict: false,
-    esModuleInterop: true,
-  },
-});
+// Transpile TypeScript to JavaScript using the stable compiler API.
+const sourceFile = ts.createSourceFile(srcPath, code, ts.ScriptTarget.ES2020, true);
+const printer = ts.createPrinter();
+const result = printer.printFile(sourceFile);
 
 // Run the transpiled JavaScript
 const vm = require('vm');
@@ -67,6 +32,6 @@ const sandbox = {
   __output: () => capturedOutput.join('\n'),
 };
 vm.createContext(sandbox);
-const script = new vm.Script(result.outputText, { filename: srcPath });
+const script = new vm.Script(result, { filename: srcPath });
 script.runInContext(sandbox);
 console.log(capturedOutput.join('\n'));
