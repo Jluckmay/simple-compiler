@@ -200,7 +200,7 @@ def run_in_container(image, cmd, src_path=None, workdir=None, input_data=None):
     except Exception as e:
         return "", f"Container error: {e}"
 
-def execute_code(cfg, src_path):
+def execute_code(cfg, src_path, language=None):
     """Compile (if needed) and run the user code using Docker when possible,
     otherwise fall back to the local subprocess runner.
     Returns (stdout, stderr).
@@ -383,7 +383,7 @@ def compile_code():
         with open(runner_path, 'w') as f:
             f.write(runner_content)
     # Execute safely
-    stdout, stderr = execute_code(cfg, src_path)
+    stdout, stderr = execute_code(cfg, src_path, language)
     # Sanitize error messages to not reveal system paths
     if stderr:
         stderr = sanitize_error(stderr)

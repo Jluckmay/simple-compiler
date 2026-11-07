@@ -177,33 +177,33 @@ class DesktopHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': str(e)}).encode())
 
     def handle_compile(self):
-            """Proxy /api/compile to the remote backend (avoids CORS from localhost)."""
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
-            try:
-                req = Request(
-                    BACKEND_URL,
-                    data=post_data,
-                    headers={'Content-Type': 'application/json'},
-                    method='POST',
-                )
-                with urlopen(req, timeout=120) as resp:
-                    body = resp.read()
-                    self.send_response(resp.status)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(body)
-            except Exception as e:
-                self.send_response(502)
+        """Proxy /api/compile to the remote backend (avoids CORS from localhost)."""
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length)
+        try:
+            req = Request(
+                BACKEND_URL,
+                data=post_data,
+                headers={'Content-Type': 'application/json'},
+                method='POST',
+            )
+            with urlopen(req, timeout=120) as resp:
+                body = resp.read()
+                self.send_response(resp.status)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(json.dumps({'error': 'Backend proxy error: ' + str(e)}).encode())
+                self.wfile.write(body)
+        except Exception as e:
+            self.send_response(502)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'Backend proxy error: ' + str(e)}).encode())
 
     def end_headers(self):
-            self.send_header('Access-Control-Allow-Origin', '*')
-            super().end_headers()
+        self.send_header('Access-Control-Allow-Origin', '*')
+        super().end_headers()
 
 
 def start_server():
