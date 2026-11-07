@@ -27,11 +27,6 @@ else:
 DESKTOP_DIR = os.path.abspath(os.path.dirname(__file__))
 PORT = 8765
 
-# Get project root
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
-PORT = 8765
-
 # Backend server used by the frontend for languages that need server-side execution.
 BACKEND_URL = 'https://simple-compiler-ldj7.onrender.com/compile'
 

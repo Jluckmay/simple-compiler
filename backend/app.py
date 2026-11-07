@@ -234,6 +234,8 @@ def execute_code(cfg, src_path):
         exec_cmd = cfg['run'](src_path)
         # SQL reads the script from stdin instead of a file argument
         exec_input = src_content if language_uses_stdin(cfg) else None
+        if exec_input is not None and isinstance(exec_input, bytes):
+            exec_input = exec_input.decode('utf-8', errors='replace')
 
     # Execution – try Docker first, fallback on error
     if docker_available():
