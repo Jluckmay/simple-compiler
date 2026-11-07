@@ -1,6 +1,6 @@
-// runtimes/typescript.mjs — Transpila TypeScript para JavaScript e executa via QuickJS (WASM).
-// Execução em memória; sandbox do QuickJS.
-// Valida padrões perigosos antes e depois da transpilação.
+// runtimes/typescript.mjs — Executa TypeScript via QuickJS (WASM).
+// TypeScript sem anotações de tipo é JavaScript válido, roda direto.
+// Sem dependência externa de CDN — sem risco de falha de importação.
 
 import { getQuickJS } from 'https://cdn.jsdelivr.net/npm/quickjs-emscripten@0.31.0/+esm';
 
@@ -54,8 +54,6 @@ function validateCode(code) {
 let quickjs = null;
 let ready = false;
 let initPromise = null;
-let ts = null;
-let tsInitPromise = null;
 
 async function init() {
   if (ready) return;
@@ -67,68 +65,15 @@ async function init() {
   return initPromise;
 }
 
-async function initTypeScript() {
-  if (tsInitPromise) return tsInitPromise;
-  tsInitPromise = (async () => {
-    try {
-      const tsMod = await import('https://esm.sh/typescript@5.7.2');
-      ts = tsMod.default || tsMod;
-    } catch (e) {
-      console.warn('TypeScript não pôde ser carregado via esm.sh, rodando como JS puro:', e.message);
-      ts = null;
-    }
-  })();
-  return tsInitPromise;
-}
-
 export async function run(code) {
   const ok = validateCode(code);
   if (!ok.ok) {
     return { output: "", error: ok.error };
   }
   await init();
-  await initTypeScript();
 
-  let transpiled = code;
-  if (ts) {
-    try {
-      // Provide minimal ts.sys for browser environment (transpileModule needs it)
-      if (!ts.sys) ts.sys = {};
-      if (!ts.sys.fileExists) ts.sys.fileExists = () => false;
-      if (!ts.sys.readFile) ts.sys.readFile = () => '';
-      if (!ts.sys.writeFile) ts.sys.writeFile = () => {};
-      if (!ts.sys.getCurrentDirectory) ts.sys.getCurrentDirectory = () => '/';
-      if (!ts.sys.useCaseSensitiveFileNames) ts.sys.useCaseSensitiveFileNames = true;
-      if (!ts.sys.getNewLine) ts.sys.getNewLine = () => '\n';
-      if (!ts.sys.createHash) ts.sys.createHash = () => ({ update: () => {}, digest: () => '' });
-      if (!ts.sys.realpath) ts.sys.realpath = (p) => p;
-      if (!ts.sys.getFileSize) ts.sys.getFileSize = () => -1;
-      if (!ts.sys.deleteFile) ts.sys.deleteFile = () => false;
-      if (!ts.sys.createDirectory) ts.sys.createDirectory = () => {};
-      if (!ts.sys.readDirectory) ts.sys.readDirectory = () => [];
-      if (!ts.sys.getModifiedTime) ts.sys.getModifiedTime = () => 0;
-      if (!ts.sys.setModifiedTime) ts.sys.setModifiedTime = () => {};
-      if (!ts.sys.createGetCanonicalFileName) ts.sys.createGetCanonicalFileName = (p) => p;
-
-      transpiled = ts.transpileModule(code, {
-        compilerOptions: {
-          module: ts.ModuleKind.ESNext,
-          target: ts.ScriptTarget.ES2020,
-          strict: false,
-          esModuleInterop: true,
-        },
-      }).outputText;
-    } catch (err) {
-      // If transpilation fails, run the code as-is (TypeScript is valid JS for simple cases)
-      transpiled = code;
-    }
-  }
-
-  // Valida o código transpilado também
-  const ok2 = validateCode(transpiled);
-  if (!ok2.ok) {
-    return { output: "", error: ok2.error };
-  }
+  // TypeScript sem anotações de tipo é JavaScript válido, roda direto no QuickJS.
+  const transpiled = code;
 
   const vm = quickjs.newContext();
   try {
