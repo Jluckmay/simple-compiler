@@ -562,6 +562,11 @@ function initTimeoutFor(language) {
 }
 
 function getApiUrl() {
+  // Desktop app (localhost) proxies /api/compile to the remote backend to avoid CORS.
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+    return '/api/compile';
+  }
   return 'https://simple-compiler-ldj7.onrender.com/compile';
 }
 
@@ -674,7 +679,7 @@ function toggleLang() {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261105b', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261106', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
