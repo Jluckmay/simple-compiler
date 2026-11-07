@@ -96,11 +96,11 @@ export async function run(code) {
     }
 
     let output = '';
+    let pdfDataUrl = null;
     if (pdfBytes) {
       const base64 = arrayBufferToBase64(pdfBytes);
-      const dataUrl = `data:application/pdf;base64,${base64}`;
+      pdfDataUrl = `data:application/pdf;base64,${base64}`;
       output = `PDF gerado com sucesso (${pdfBytes.byteLength} bytes).\n`;
-      output += `Visualizar: ${dataUrl}\n`;
       if (pdfjs) {
         output += '(PDF.js carregado para renderização inline)';
       }
@@ -110,6 +110,7 @@ export async function run(code) {
 
     return {
       output,
+      pdfDataUrl,
       error: result.error || null,
     };
   } catch (err) {

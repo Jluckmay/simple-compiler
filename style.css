@@ -344,3 +344,16 @@ body {
     flex: 1;
   }
 }
+
+/* ===== PDF Viewer ===== */
+.pdf-viewer {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.pdf-frame {
+  display: block;
+}

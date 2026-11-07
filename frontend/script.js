@@ -287,22 +287,157 @@ let autocompletePrefix = '';
 let autocompleteStartPos = 0;
 
 function getCursorPosition(el) {
-  if (document.selection) {
-    el.focus();
-    const sel = document.selection.createRange();
-    sel.moveStart('character', -el.value.length);
-    return sel.text.length;
-  }
-  if (el.selectionStart !== undefined) {
-    return el.selectionStart;
-  }
-  return 0;
+  const sel = window.getSelection();
+  if (sel.rangeCount === 0) return 0;
+  const range = sel.getRangeAt(0);
+  const preCaretRange = range.cloneRange();
+  preCaretRange.selectNodeContents(el);
+  preCaretRange.setEnd(range.startContainer, range.startOffset);
+  return preCaretRange.toString().length;
 }
 
 function setCursorPosition(el, pos) {
   el.focus();
-  if (el.setSelectionRange) {
-    el.setSelectionRange(pos, pos);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  const range = document.createRange();
+  let charIndex = 0;
+  let node = el.firstChild;
+  let found = false;
+
+  function walk(node) {
+    if (found || !node) return;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const nextCharIndex = charIndex + node.length;
+      if (pos >= charIndex && pos <= nextCharIndex) {
+        range.setStart(node, pos - charIndex);
+        range.setEnd(node, pos - charIndex);
+        sel.addRange(range);
+        found = true;
+        return;
+      }
+      charIndex = nextCharIndex;
+    } else {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        walk(node.childNodes[i]);
+        if (found) return;
+      }
+    }
+  }
+
+  walk(el);
+  if (!found) {
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.addRange(range);
+  }
+}
+
+function getSelectionRange(el) {
+  const sel = window.getSelection();
+  if (sel.rangeCount === 0) return { start: 0, end: 0 };
+  const range = sel.getRangeAt(0);
+  const start = getCursorPosition(el);
+  const end = start + range.toString().length;
+  return { start, end };
+}
+
+function setSelectionRange(el, start, end) {
+  el.focus();
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  const range = document.createRange();
+  let charIndex = 0;
+  let startNode = null, startOffset = 0, endNode = null, endOffset = 0;
+  let foundStart = false, foundEnd = false;
+
+  function walk(node) {
+    if (foundEnd || !node) return;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const nextCharIndex = charIndex + node.length;
+      if (!foundStart && start >= charIndex && start <= nextCharIndex) {
+        startNode = node;
+        startOffset = start - charIndex;
+        foundStart = true;
+      }
+      if (foundStart && end >= charIndex && end <= nextCharIndex) {
+        endNode = node;
+        endOffset = end - charIndex;
+        foundEnd = true;
+        return;
+      }
+      charIndex = nextCharIndex;
+    } else {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        walk(node.childNodes[i]);
+        if (foundEnd) return;
+      }
+    }
+  }
+
+  walk(el);
+  if (startNode && endNode) {
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    sel.addRange(range);
+  }
+}
+
+const INDENT = '    '; // 4 spaces for indentation
+
+function indentCode(el) {
+  const { start, end } = getSelectionRange(el);
+  const text = el.textContent;
+
+  if (start === end) {
+    // No selection: insert indentation at cursor
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const indent = before.substring(lineStart, start).match(/^\s*/)[0];
+    const newText = before + INDENT + after;
+    el.textContent = newText;
+    setCursorPosition(el, start + INDENT.length);
+  } else {
+    // Selection: indent all selected lines
+    const selected = text.substring(start, end);
+    const lines = selected.split('\n');
+    const indented = lines.map(line => INDENT + line).join('\n');
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    el.textContent = before + indented + after;
+    setSelectionRange(el, start, start + indented.length);
+  }
+}
+
+function outdentCode(el) {
+  const { start, end } = getSelectionRange(el);
+  const text = el.textContent;
+
+  if (start === end) {
+    // No selection: remove indentation before cursor (one indent level)
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const lineIndent = before.substring(lineStart, start);
+    const match = lineIndent.match(/^(\s{0,4})/);
+    const removeLen = match ? match[1].length : 0;
+    const newBefore = before.substring(0, lineStart) + before.substring(lineStart + removeLen, start);
+    el.textContent = newBefore + after;
+    setCursorPosition(el, start - removeLen);
+  } else {
+    // Selection: outdent all selected lines
+    const selected = text.substring(start, end);
+    const lines = selected.split('\n');
+    const outdented = lines.map(line => {
+      const match = line.match(/^(\s{0,4})/);
+      const removeLen = match ? match[1].length : 0;
+      return line.substring(removeLen);
+    }).join('\n');
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    el.textContent = before + outdented + after;
+    setSelectionRange(el, start, start + outdented.length);
   }
 }
 
@@ -443,11 +578,13 @@ function handleCodeKeydown(e) {
   // Original Tab handling (only when autocomplete is not active)
   if (e.key === 'Tab') {
     e.preventDefault();
-    const start = getCursorPosition(codeEl);
-    const end = start; // single cursor
-    const value = codeEl.textContent;
-    codeEl.textContent = value.substring(0, start) + '  ' + value.substring(end);
-    setCursorPosition(codeEl, start + 2);
+    if (e.shiftKey) {
+      // Shift+Tab: outdent selected lines or remove indentation before cursor
+      outdentCode(codeEl);
+    } else {
+      // Tab: insert tab character or indent selected lines
+      indentCode(codeEl);
+    }
     return;
   }
 }
@@ -512,18 +649,48 @@ async function runCode() {
       const backendResult = await runViaBackend(code, language);
       if (backendResult.error) {
         resultEl.textContent = t(langKey, 'backendError') + ': ' + backendResult.error;
+        const pdfViewer = document.getElementById('pdf-viewer');
+        if (pdfViewer) pdfViewer.style.display = 'none';
       } else if (backendResult.output) {
         resultEl.textContent = backendResult.output;
+        // Check for PDF data URL in backend output (LaTeX fallback)
+        const pdfMatch = backendResult.output.match(/data:application\/pdf;base64,[A-Za-z0-9+/=]+/);
+        const pdfViewer = document.getElementById('pdf-viewer');
+        const pdfFrame = document.getElementById('pdf-frame');
+        if (pdfMatch && pdfViewer && pdfFrame) {
+          pdfFrame.src = pdfMatch[0];
+          pdfViewer.style.display = 'block';
+        } else if (pdfViewer) {
+          pdfViewer.style.display = 'none';
+        }
       } else {
         resultEl.textContent = '(no output)';
+        const pdfViewer = document.getElementById('pdf-viewer');
+        if (pdfViewer) pdfViewer.style.display = 'none';
       }
     } catch (backendErr) {
       resultEl.textContent = t(langKey, 'backendError') + ': ' + backendErr.message;
+      const pdfViewer = document.getElementById('pdf-viewer');
+      if (pdfViewer) pdfViewer.style.display = 'none';
     }
   } else if (wasmResult && wasmResult.output) {
     resultEl.textContent = wasmResult.output;
+    // Render PDF if a data URL was returned (LaTeX)
+    if (wasmResult.pdfDataUrl) {
+      const pdfViewer = document.getElementById('pdf-viewer');
+      const pdfFrame = document.getElementById('pdf-frame');
+      if (pdfViewer && pdfFrame) {
+        pdfFrame.src = wasmResult.pdfDataUrl;
+        pdfViewer.style.display = 'block';
+      }
+    } else {
+      const pdfViewer = document.getElementById('pdf-viewer');
+      if (pdfViewer) pdfViewer.style.display = 'none';
+    }
   } else {
     resultEl.textContent = '(no output)';
+    const pdfViewer = document.getElementById('pdf-viewer');
+    if (pdfViewer) pdfViewer.style.display = 'none';
   }
 
   runBtn.disabled = false;
