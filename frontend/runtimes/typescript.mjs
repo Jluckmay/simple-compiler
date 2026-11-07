@@ -4,18 +4,6 @@
 
 import { getQuickJS } from 'https://cdn.jsdelivr.net/npm/quickjs-emscripten@0.31.0/+esm';
 
-// Carrega o TypeScript como ES module via esm.sh (fornece ESM nativo).
-// Se falhar, roda o código como JavaScript puro (TS é JS válido para casos simples).
-let ts = null;
-let tsLoadErr = null;
-try {
-  // eslint-disable-next-line no-undef
-  const tsMod = await import('https://esm.sh/typescript@5.7.2');
-  ts = tsMod.default || tsMod;
-} catch (e) {
-  tsLoadErr = e.message || String(e);
-}
-
 const MEMORY_LIMIT = 64 * 1024 * 1024;
 const STACK_LIMIT = 1024 * 1024;
 
@@ -66,6 +54,8 @@ function validateCode(code) {
 let quickjs = null;
 let ready = false;
 let initPromise = null;
+let ts = null;
+let tsInitPromise = null;
 
 async function init() {
   if (ready) return;
@@ -77,19 +67,31 @@ async function init() {
   return initPromise;
 }
 
+async function initTypeScript() {
+  if (tsInitPromise) return tsInitPromise;
+  tsInitPromise = (async () => {
+    try {
+      const tsMod = await import('https://esm.sh/typescript@5.7.2');
+      ts = tsMod.default || tsMod;
+    } catch (e) {
+      console.warn('TypeScript não pôde ser carregado via esm.sh, rodando como JS puro:', e.message);
+      ts = null;
+    }
+  })();
+  return tsInitPromise;
+}
+
 export async function run(code) {
   const ok = validateCode(code);
   if (!ok.ok) {
     return { output: "", error: ok.error };
   }
   await init();
+  await initTypeScript();
 
-  let transpiled;
-  try {
-    // If TypeScript failed to load, run code as-is (TS is valid JS for simple cases)
-    if (!ts) {
-      transpiled = code;
-    } else {
+  let transpiled = code;
+  if (ts) {
+    try {
       // Provide minimal ts.sys for browser environment (transpileModule needs it)
       if (!ts.sys) ts.sys = {};
       if (!ts.sys.fileExists) ts.sys.fileExists = () => false;
@@ -116,10 +118,10 @@ export async function run(code) {
           esModuleInterop: true,
         },
       }).outputText;
+    } catch (err) {
+      // If transpilation fails, run the code as-is (TypeScript is valid JS for simple cases)
+      transpiled = code;
     }
-  } catch (err) {
-    // If transpilation fails, run the code as-is (TypeScript is valid JS for simple cases)
-    transpiled = code;
   }
 
   // Valida o código transpilado também
