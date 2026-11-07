@@ -846,7 +846,7 @@ function toggleLang() {
 }
 
 function createWorker(language) {
-  const w = new Worker('worker.mjs?v=20261109', { type: 'module' });
+  const w = new Worker('worker.mjs?v=20261110', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
     const initTimeout = setTimeout(() => {
@@ -855,7 +855,7 @@ function createWorker(language) {
     }, initTimeoutFor(language));
 
     w.onmessage = (event) => {
-      const { id, output, error } = event.data || {};
+      const { id, output, error, pdfDataUrl } = event.data || {};
       const cb = pending.get(id);
       if (!cb || cb.worker !== w) return;
       pending.delete(id);
@@ -864,7 +864,7 @@ function createWorker(language) {
         cb.reject(new Error(error));
       } else {
         runtimeLoaded[w.language] = true;
-        cb.resolve({ output, error: null });
+        cb.resolve({ output, error: null, pdfDataUrl: pdfDataUrl || null });
       }
     };
 

@@ -3,7 +3,7 @@
 // externamente (script.js) quando o tempo limite é atingido, interrompendo
 // loops infinitos sem travar a thread principal da UI.
 
-const CACHE_BUST = '?v=20261109';
+const CACHE_BUST = '?v=20261110';
 
 const RUNTIMES = {
   python: () => import(`./runtimes/python.mjs${CACHE_BUST}`),
@@ -49,7 +49,7 @@ self.onmessage = async (event) => {
     } else {
       result = await mod.run(code);
     }
-    self.postMessage({ id, output: result.output || "", error: result.error || null });
+    self.postMessage({ id, output: result.output || "", error: result.error || null, pdfDataUrl: result.pdfDataUrl || null });
   } catch (err) {
     self.postMessage({
       id,
