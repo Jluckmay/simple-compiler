@@ -86,32 +86,37 @@ export async function run(code) {
 
   let transpiled;
   try {
-    // Provide minimal ts.sys for browser environment (transpileModule needs it)
-    if (!ts.sys) ts.sys = {};
-    if (!ts.sys.fileExists) ts.sys.fileExists = () => false;
-    if (!ts.sys.readFile) ts.sys.readFile = () => '';
-    if (!ts.sys.writeFile) ts.sys.writeFile = () => {};
-    if (!ts.sys.getCurrentDirectory) ts.sys.getCurrentDirectory = () => '/';
-    if (!ts.sys.useCaseSensitiveFileNames) ts.sys.useCaseSensitiveFileNames = true;
-    if (!ts.sys.getNewLine) ts.sys.getNewLine = () => '\n';
-    if (!ts.sys.createHash) ts.sys.createHash = () => ({ update: () => {}, digest: () => '' });
-    if (!ts.sys.realpath) ts.sys.realpath = (p) => p;
-    if (!ts.sys.getFileSize) ts.sys.getFileSize = () => -1;
-    if (!ts.sys.deleteFile) ts.sys.deleteFile = () => false;
-    if (!ts.sys.createDirectory) ts.sys.createDirectory = () => {};
-    if (!ts.sys.readDirectory) ts.sys.readDirectory = () => [];
-    if (!ts.sys.getModifiedTime) ts.sys.getModifiedTime = () => 0;
-    if (!ts.sys.setModifiedTime) ts.sys.setModifiedTime = () => {};
-    if (!ts.sys.createGetCanonicalFileName) ts.sys.createGetCanonicalFileName = (p) => p;
+    // If TypeScript failed to load, run code as-is (TS is valid JS for simple cases)
+    if (!ts) {
+      transpiled = code;
+    } else {
+      // Provide minimal ts.sys for browser environment (transpileModule needs it)
+      if (!ts.sys) ts.sys = {};
+      if (!ts.sys.fileExists) ts.sys.fileExists = () => false;
+      if (!ts.sys.readFile) ts.sys.readFile = () => '';
+      if (!ts.sys.writeFile) ts.sys.writeFile = () => {};
+      if (!ts.sys.getCurrentDirectory) ts.sys.getCurrentDirectory = () => '/';
+      if (!ts.sys.useCaseSensitiveFileNames) ts.sys.useCaseSensitiveFileNames = true;
+      if (!ts.sys.getNewLine) ts.sys.getNewLine = () => '\n';
+      if (!ts.sys.createHash) ts.sys.createHash = () => ({ update: () => {}, digest: () => '' });
+      if (!ts.sys.realpath) ts.sys.realpath = (p) => p;
+      if (!ts.sys.getFileSize) ts.sys.getFileSize = () => -1;
+      if (!ts.sys.deleteFile) ts.sys.deleteFile = () => false;
+      if (!ts.sys.createDirectory) ts.sys.createDirectory = () => {};
+      if (!ts.sys.readDirectory) ts.sys.readDirectory = () => [];
+      if (!ts.sys.getModifiedTime) ts.sys.getModifiedTime = () => 0;
+      if (!ts.sys.setModifiedTime) ts.sys.setModifiedTime = () => {};
+      if (!ts.sys.createGetCanonicalFileName) ts.sys.createGetCanonicalFileName = (p) => p;
 
-    transpiled = ts.transpileModule(code, {
-      compilerOptions: {
-        module: ts.ModuleKind.ESNext,
-        target: ts.ScriptTarget.ES2020,
-        strict: false,
-        esModuleInterop: true,
-      },
-    }).outputText;
+      transpiled = ts.transpileModule(code, {
+        compilerOptions: {
+          module: ts.ModuleKind.ESNext,
+          target: ts.ScriptTarget.ES2020,
+          strict: false,
+          esModuleInterop: true,
+        },
+      }).outputText;
+    }
   } catch (err) {
     // If transpilation fails, run the code as-is (TypeScript is valid JS for simple cases)
     transpiled = code;
