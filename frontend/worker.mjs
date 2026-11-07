@@ -43,7 +43,7 @@ self.onmessage = async (event) => {
     const mod = await getRuntime(language);
     let result;
     if (language === 'htmlcss') {
-      result = await mod.run();
+      result = await mod.run(code);
     } else if (language === 'unsupported' || !RUNTIMES[language]) {
       result = await mod.run(language);
     } else {
