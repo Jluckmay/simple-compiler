@@ -651,63 +651,133 @@ async function runCode() {
       const backendResult = await runViaBackend(code, language);
       if (backendResult.error) {
         resultEl.textContent = t(langKey, 'backendError') + ': ' + backendResult.error;
+        resultEl.style.display = 'block';
         const pdfViewer = document.getElementById('pdf-viewer');
         if (pdfViewer) pdfViewer.style.display = 'none';
-      } else if (backendResult.output) {
-        // Check for PDF data URL in backend output (LaTeX fallback)
-        const pdfMatch = backendResult.output.match(/data:application\/pdf;base64,[A-Za-z0-9+/=]+/);
-        const pdfViewer = document.getElementById('pdf-viewer');
-        const pdfFrame = document.getElementById('pdf-frame');
-        if (pdfMatch && pdfViewer && pdfFrame) {
-          resultEl.textContent = '';
-          pdfFrame.src = pdfMatch[0];
-          pdfViewer.style.display = 'block';
-        } else {
-          resultEl.textContent = backendResult.output;
-          if (pdfViewer) pdfViewer.style.display = 'none';
-        }
+      } else if (backendResult.output || backendResult.pdfDataUrl) {
+        handleExecutionSuccess(language, backendResult.output, backendResult.pdfDataUrl);
       } else {
         resultEl.textContent = '(no output)';
+        resultEl.style.display = 'block';
         const pdfViewer = document.getElementById('pdf-viewer');
         if (pdfViewer) pdfViewer.style.display = 'none';
       }
     } catch (backendErr) {
       resultEl.textContent = t(langKey, 'backendError') + ': ' + backendErr.message;
+      resultEl.style.display = 'block';
       const pdfViewer = document.getElementById('pdf-viewer');
       if (pdfViewer) pdfViewer.style.display = 'none';
     }
-  } else if (wasmResult && wasmResult.output) {
-    const language = document.getElementById('language').value;
-    const pdfViewer = document.getElementById('pdf-viewer');
-    const pdfFrame = document.getElementById('pdf-frame');
-
-    // Render HTML/CSS in an iframe instead of plain text
-    if (language === 'htmlcss') {
-      resultEl.textContent = '';
-      if (pdfViewer && pdfFrame) {
-        pdfFrame.srcdoc = wasmResult.output;
-        pdfViewer.style.display = 'block';
-      }
-    } else {
-      resultEl.textContent = wasmResult.output;
-      // Render PDF if a data URL was returned (LaTeX)
-      if (wasmResult.pdfDataUrl) {
-        if (pdfViewer && pdfFrame) {
-          pdfFrame.src = wasmResult.pdfDataUrl;
-          pdfViewer.style.display = 'block';
-        }
-      } else {
-        if (pdfViewer) pdfViewer.style.display = 'none';
-      }
-    }
+  } else if (wasmResult && (wasmResult.output || wasmResult.pdfDataUrl)) {
+    handleExecutionSuccess(language, wasmResult.output, wasmResult.pdfDataUrl);
   } else {
     resultEl.textContent = '(no output)';
+    resultEl.style.display = 'block';
     const pdfViewer = document.getElementById('pdf-viewer');
     if (pdfViewer) pdfViewer.style.display = 'none';
   }
 
   runBtn.disabled = false;
   runBtn.textContent = t(langKey, 'runButton');
+}
+
+function renderPdfViewer(dataUrl, rawOutput, langKey) {
+  const resultEl = document.getElementById('result');
+  const pdfViewer = document.getElementById('pdf-viewer');
+  const pdfFrame = document.getElementById('pdf-frame');
+  if (!pdfViewer || !pdfFrame) return;
+
+  let blobUrl = null;
+  try {
+    const parts = dataUrl.split(',');
+    const byteCharacters = atob(parts[1]);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    blobUrl = URL.createObjectURL(blob);
+  } catch (e) {
+    console.warn('Failed to create Blob URL from PDF data URL, falling back to data URL:', e);
+    blobUrl = dataUrl;
+  }
+
+  pdfFrame.srcdoc = '';
+  pdfFrame.src = blobUrl;
+  pdfViewer.style.display = 'block';
+
+  let downloadLink = document.getElementById('pdf-download-link');
+  if (!downloadLink) {
+    downloadLink = document.createElement('a');
+    downloadLink.id = 'pdf-download-link';
+    downloadLink.target = '_blank';
+    downloadLink.className = 'shell-btn';
+    downloadLink.style.display = 'inline-flex';
+    downloadLink.style.alignItems = 'center';
+    downloadLink.style.gap = '0.5rem';
+    downloadLink.style.marginBottom = '0.75rem';
+    downloadLink.style.textDecoration = 'none';
+    downloadLink.style.fontSize = '0.875rem';
+    downloadLink.style.padding = '0.5rem 1rem';
+    pdfViewer.insertBefore(downloadLink, pdfFrame);
+  }
+  downloadLink.href = blobUrl;
+  downloadLink.download = 'document.pdf';
+  downloadLink.textContent = langKey === 'pt' ? '📥 Abrir PDF / Download' : '📥 Open PDF / Download';
+
+  resultEl.textContent = '';
+  resultEl.style.display = 'none';
+}
+
+function removePdfDownloadLink() {
+  const link = document.getElementById('pdf-download-link');
+  if (link && link.parentNode) {
+    link.parentNode.removeChild(link);
+  }
+}
+
+function handleExecutionSuccess(language, output, pdfDataUrl) {
+  const resultEl = document.getElementById('result');
+  const pdfViewer = document.getElementById('pdf-viewer');
+  const pdfFrame = document.getElementById('pdf-frame');
+  const langKey = document.getElementById('lang-toggle').textContent.trim() === 'PT' ? 'pt' : 'en';
+
+  if (language === 'htmlcss') {
+    resultEl.textContent = '';
+    resultEl.style.display = 'none';
+    if (pdfViewer && pdfFrame) {
+      removePdfDownloadLink();
+      pdfFrame.src = 'about:blank';
+      pdfFrame.srcdoc = output;
+      pdfViewer.style.display = 'block';
+    }
+    return;
+  }
+
+  let foundPdfUrl = pdfDataUrl;
+  if (!foundPdfUrl && output) {
+    const match = output.match(/data:application\/pdf;base64,[A-Za-z0-9+/=]+/);
+    if (match) {
+      foundPdfUrl = match[0];
+    }
+  }
+
+  if (foundPdfUrl) {
+    renderPdfViewer(foundPdfUrl, output, langKey);
+    return;
+  }
+
+  if (pdfViewer) {
+    pdfViewer.style.display = 'none';
+    if (pdfFrame) {
+      pdfFrame.src = 'about:blank';
+      pdfFrame.srcdoc = '';
+    }
+  }
+  removePdfDownloadLink();
+  resultEl.textContent = output;
+  resultEl.style.display = 'block';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -725,6 +795,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('run').addEventListener('click', runCode);
+  const langSelect = document.getElementById('language');
+  if (langSelect) {
+    langSelect.addEventListener('change', () => {
+      const pdfViewer = document.getElementById('pdf-viewer');
+      if (pdfViewer) pdfViewer.style.display = 'none';
+      const resultEl = document.getElementById('result');
+      if (resultEl) {
+        resultEl.textContent = '';
+        resultEl.style.display = 'block';
+      }
+      removePdfDownloadLink();
+    });
+  }
 
   // Acorda o servidor backend em segundo plano (Render free tier hiberna após inatividade)
   wakeBackend();

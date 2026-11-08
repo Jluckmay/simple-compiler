@@ -111,9 +111,9 @@ def try_local_execute(code, language, timeout=15):
                     b64 = base64.b64encode(pf.read()).decode('ascii')
                 pdf_data_url = f'data:application/pdf;base64,{b64}'
                 output_text = (output_text + '\n' + pdf_data_url).strip() if output_text else pdf_data_url
-                return {'output': output_text, 'error': ''}
+                return {'output': output_text, 'pdfDataUrl': pdf_data_url, 'error': ''}
             else:
-                return {'output': output_text, 'error': res.stderr or 'Failed to generate PDF'}
+                return {'output': output_text, 'pdfDataUrl': None, 'error': res.stderr or 'Failed to generate PDF'}
                 
         elif lang == 'go' and shutil.which('go'):
             src = os.path.join(temp_dir, 'main.go')

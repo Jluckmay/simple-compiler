@@ -27,7 +27,7 @@ export async function runViaBackend(language, code) {
       clearTimeout(timeout);
 
       const data = await resp.json();
-      return { output: data.output || '', error: data.error || null };
+      return { output: data.output || '', pdfDataUrl: data.pdfDataUrl || null, error: data.error || null };
     } catch (err) {
       if (attempt < 2) {
         await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));

@@ -413,7 +413,12 @@ def compile_code():
     # Sanitize error messages to not reveal system paths
     if stderr:
         stderr = sanitize_error(stderr)
-    return jsonify({"output": stdout, "error": stderr})
+    pdf_data_url = None
+    if language == 'latex' and 'data:application/pdf;base64,' in (stdout or ''):
+        match = re.search(r'data:application/pdf;base64,[A-Za-z0-9+/=]+', stdout)
+        if match:
+            pdf_data_url = match.group(0)
+    return jsonify({"output": stdout, "pdfDataUrl": pdf_data_url, "error": stderr})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

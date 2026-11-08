@@ -72,17 +72,33 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+function parseLatexResult(result) {
+  let output = (result && result.output) || '';
+  let pdfDataUrl = (result && result.pdfDataUrl) || null;
+  if (!pdfDataUrl && output) {
+    const pdfMatch = output.match(/data:application\/pdf;base64,[A-Za-z0-9+/=]+/);
+    if (pdfMatch) {
+      pdfDataUrl = pdfMatch[0];
+      output = output.replace(pdfMatch[0], '').trim();
+    }
+  }
+  return {
+    output: output || (pdfDataUrl ? 'PDF gerado com sucesso.' : ''),
+    pdfDataUrl,
+    error: (result && result.error) || null,
+  };
+}
+
 export async function run(code) {
   await init();
 
   if (!tectonic) {
     console.info(tectonicLoadError || 'Tectonic WASM não disponível.');
-    return await runViaBackend('latex', code);
+    const result = await runViaBackend('latex', code);
+    return parseLatexResult(result);
   }
 
   try {
-    // O Tectonic compila LaTeX para PDF em memória.
-    // A API exata depende da versão do pacote @tectonic/tectonic.
     const result = await tectonic.compile(code, {
       format: 'latex',
       output: 'pdf',
@@ -96,25 +112,23 @@ export async function run(code) {
     }
 
     let output = '';
+    let pdfDataUrl = null;
     if (pdfBytes) {
       const base64 = arrayBufferToBase64(pdfBytes);
-      const dataUrl = `data:application/pdf;base64,${base64}`;
-      output = `PDF gerado com sucesso (${pdfBytes.byteLength} bytes).\n`;
-      output += `Visualizar: ${dataUrl}\n`;
-      if (pdfjs) {
-        output += '(PDF.js carregado para renderização inline)';
-      }
+      pdfDataUrl = `data:application/pdf;base64,${base64}`;
+      output = `PDF gerado com sucesso (${pdfBytes.byteLength} bytes).`;
     } else {
       output = result.stdout || result.output || 'Compilação concluída sem saída de PDF.';
     }
 
     return {
       output,
+      pdfDataUrl,
       error: result.error || null,
     };
   } catch (err) {
-    // Se o Tectonic falhar na execução, tenta o backend como fallback
     console.warn('Tectonic execution failed, falling back to backend:', err.message);
-    return await runViaBackend('latex', code);
+    const result = await runViaBackend('latex', code);
+    return parseLatexResult(result);
   }
 }
