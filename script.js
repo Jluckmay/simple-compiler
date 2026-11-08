@@ -674,18 +674,28 @@ async function runCode() {
       if (pdfViewer) pdfViewer.style.display = 'none';
     }
   } else if (wasmResult && wasmResult.output) {
-    resultEl.textContent = wasmResult.output;
-    // Render PDF if a data URL was returned (LaTeX)
-    if (wasmResult.pdfDataUrl) {
-      const pdfViewer = document.getElementById('pdf-viewer');
-      const pdfFrame = document.getElementById('pdf-frame');
+    const language = document.getElementById('language').value;
+    const pdfViewer = document.getElementById('pdf-viewer');
+    const pdfFrame = document.getElementById('pdf-frame');
+
+    // Render HTML/CSS in an iframe instead of plain text
+    if (language === 'htmlcss') {
+      resultEl.textContent = '';
       if (pdfViewer && pdfFrame) {
-        pdfFrame.src = wasmResult.pdfDataUrl;
+        pdfFrame.srcdoc = wasmResult.output;
         pdfViewer.style.display = 'block';
       }
     } else {
-      const pdfViewer = document.getElementById('pdf-viewer');
-      if (pdfViewer) pdfViewer.style.display = 'none';
+      resultEl.textContent = wasmResult.output;
+      // Render PDF if a data URL was returned (LaTeX)
+      if (wasmResult.pdfDataUrl) {
+        if (pdfViewer && pdfFrame) {
+          pdfFrame.src = wasmResult.pdfDataUrl;
+          pdfViewer.style.display = 'block';
+        }
+      } else {
+        if (pdfViewer) pdfViewer.style.display = 'none';
+      }
     }
   } else {
     resultEl.textContent = '(no output)';

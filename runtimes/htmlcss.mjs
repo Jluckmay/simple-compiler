@@ -1,9 +1,9 @@
-// runtimes/htmlcss.mjs — HTML/CSS não executa código; retorna uma mensagem
-// informando que o conteúdo pode ser visualizado diretamente no editor.
+// runtimes/htmlcss.mjs — HTML/CSS não executa código; retorna o próprio HTML
+// para ser renderizado em um iframe pelo frontend.
 
-export async function run() {
+export async function run(code) {
   return {
-    output: "",
+    output: code || "",
     error: null,
   };
 }
