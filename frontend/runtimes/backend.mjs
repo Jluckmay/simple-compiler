@@ -1,24 +1,24 @@
 // runtimes/backend.mjs — Helper compartilhado para execução via servidor backend.
 // Retries com backoff exponencial e AbortController timeout (30s).
-// Em localhost (app desktop), usa o proxy /api/compile para evitar CORS.
 
-const REMOTE_BACKEND_URL = 'https://simple-compiler-ldj7.onrender.com/compile';
-
-function getApiUrl() {
-  const host = self.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
-    return '/api/compile';
+function getBackendUrl() {
+  if (typeof self !== 'undefined' && self.location) {
+    const host = self.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+      return '/api/compile';
+    }
   }
-  return REMOTE_BACKEND_URL;
+  return 'https://simple-compiler-ldj7.onrender.com/compile';
 }
 
 export async function runViaBackend(language, code) {
+  const backendUrl = getBackendUrl();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
 
-      const resp = await fetch(getApiUrl(), {
+      const resp = await fetch(backendUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, language }),

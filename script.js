@@ -38,6 +38,8 @@ const WORKER_INIT_TIMEOUT_MS = 60000; // tempo máximo para criar o worker (ms)
 // Runtimes grandes (sqlite-wasm, webr) precisam de mais tempo para baixar.
 // Linguagens que executam no backend precisam de tempo extra para cold start.
 const INIT_TIMEOUT_BY_LANG = {
+  ts: 60000,
+  typescript: 60000,
   sql: 120000,  // sqlite-wasm é grande (~several MB)
   r: 120000,    // webr é grande (~several MB)
   latex: 180000, // tectonic + pdf.js são grandes (~several MB)
@@ -610,7 +612,7 @@ function t(langKey, key) {
 
 async function runCode() {
   const codeEl = document.getElementById('code');
-  const code = codeEl.textContent;
+  const code = (codeEl.innerText !== undefined ? codeEl.innerText : codeEl.textContent);
   const language = document.getElementById('language').value;
   const resultEl = document.getElementById('result');
   const runBtn = document.getElementById('run');
@@ -644,7 +646,7 @@ async function runCode() {
 
   // Se o WASM falhou, recorre ao servidor backend (mensagem apenas no console)
   if (wasmError || (wasmResult && wasmResult.error)) {
-    console.info(`WASM falhou para '${language}', recorrendo ao servidor backend.`);
+    console.info(`WASM falhou para '${language}', recorrendo ao servidor backend:`, wasmError || (wasmResult && wasmResult.error));
     try {
       const backendResult = await runViaBackend(code, language);
       if (backendResult.error) {
@@ -652,16 +654,17 @@ async function runCode() {
         const pdfViewer = document.getElementById('pdf-viewer');
         if (pdfViewer) pdfViewer.style.display = 'none';
       } else if (backendResult.output) {
-        resultEl.textContent = backendResult.output;
         // Check for PDF data URL in backend output (LaTeX fallback)
         const pdfMatch = backendResult.output.match(/data:application\/pdf;base64,[A-Za-z0-9+/=]+/);
         const pdfViewer = document.getElementById('pdf-viewer');
         const pdfFrame = document.getElementById('pdf-frame');
         if (pdfMatch && pdfViewer && pdfFrame) {
+          resultEl.textContent = '';
           pdfFrame.src = pdfMatch[0];
           pdfViewer.style.display = 'block';
-        } else if (pdfViewer) {
-          pdfViewer.style.display = 'none';
+        } else {
+          resultEl.textContent = backendResult.output;
+          if (pdfViewer) pdfViewer.style.display = 'none';
         }
       } else {
         resultEl.textContent = '(no output)';
@@ -859,10 +862,7 @@ function createWorker(language) {
   const w = new Worker('worker.mjs?v=20261111', { type: 'module' });
   w.language = language;
   return new Promise((resolve, reject) => {
-    const initTimeout = setTimeout(() => {
-      w.terminate();
-      reject(new Error('Worker initialization timeout'));
-    }, initTimeoutFor(language));
+    let resolved = false;
 
     w.onmessage = (event) => {
       const { id, output, error, pdfDataUrl } = event.data || {};
@@ -879,7 +879,6 @@ function createWorker(language) {
     };
 
     w.onerror = (err) => {
-      clearTimeout(initTimeout);
       w.terminate();
       const detail = `${err.message || ''} | ${err.filename || ''}:${err.lineno || ''}:${err.colno || ''} | ${err.error ? err.error.stack : ''}`;
       // Rejeita todas as chamadas pendentes deste worker
@@ -890,9 +889,12 @@ function createWorker(language) {
           cb.reject(new Error(`Worker error: ${detail}`));
         }
       }
-      reject(new Error(`Worker error: ${detail}`));
+      if (!resolved) {
+        reject(new Error(`Worker error: ${detail}`));
+      }
     };
 
+    resolved = true;
     resolve(w);
   });
 }
