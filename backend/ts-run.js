@@ -1,9 +1,7 @@
-// ts-run.js — Wrapper to run TypeScript via Node.js.
-// Used by the backend as a fallback when WASM TypeScript runtime is unavailable.
-// Uses ts.createSourceFile + ts.createPrinter (stable API) instead of
-// ts.transpileModule which can break with newer TypeScript versions.
+// ts-run.js — Executa TypeScript/JavaScript via Node.js no backend.
+// TypeScript simples (sem anotações de tipo complexas) é JavaScript válido.
+// Não requer o pacote 'typescript' — roda direto no Node.js.
 
-const ts = require('typescript');
 const fs = require('fs');
 const srcPath = process.argv[2];
 
@@ -14,12 +12,8 @@ if (!srcPath) {
 
 const code = fs.readFileSync(srcPath, 'utf8');
 
-// Transpile TypeScript to JavaScript using the stable compiler API.
-const sourceFile = ts.createSourceFile(srcPath, code, ts.ScriptTarget.ES2020, true);
-const printer = ts.createPrinter();
-const result = printer.printFile(sourceFile);
-
-// Run the transpiled JavaScript
+// TypeScript sem anotações de tipo é JavaScript válido — roda direto.
+// Se houver erro de sintaxe, o Node.js reportará naturalmente.
 const vm = require('vm');
 const capturedOutput = [];
 const sandbox = {
@@ -29,9 +23,13 @@ const sandbox = {
     warn: (...args) => capturedOutput.push(args.join(' ')),
     info: (...args) => capturedOutput.push(args.join(' ')),
   },
-  __output: () => capturedOutput.join('\n'),
 };
 vm.createContext(sandbox);
-const script = new vm.Script(result, { filename: srcPath });
-script.runInContext(sandbox);
+const script = new vm.Script(code, { filename: srcPath });
+try {
+  script.runInContext(sandbox);
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}
 console.log(capturedOutput.join('\n'));
