@@ -24,8 +24,15 @@ else:
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
 
+if FRONTEND_DIR not in sys.path:
+    sys.path.insert(0, FRONTEND_DIR)
+try:
+    from local_compiler import try_local_execute
+except ImportError:
+    try_local_execute = lambda code, lang: None
+
 DESKTOP_DIR = os.path.abspath(os.path.dirname(__file__))
-PORT = 8765
+PORT = int(os.environ.get('PORT', '8765'))
 
 # Backend server used by the frontend for languages that need server-side execution.
 BACKEND_URL = 'https://simple-compiler-ldj7.onrender.com/compile'
@@ -54,8 +61,20 @@ except ImportError:
 class DesktopHandler(SimpleHTTPRequestHandler):
     """Custom handler to serve frontend files and API endpoints"""
     
+    extensions_map = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        '.mjs': 'application/javascript',
+        '.js': 'application/javascript',
+        '.wasm': 'application/wasm',
+        '.json': 'application/json',
+    }
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=FRONTEND_DIR, **kwargs)
+        
+    def translate_path(self, path):
+        path = urlparse(path).path
+        return super().translate_path(path)
     
     def do_OPTIONS(self):
         self.send_response(200)
@@ -115,9 +134,10 @@ class DesktopHandler(SimpleHTTPRequestHandler):
             self.end_headers()
     
     def do_POST(self):
-        if self.path == '/api/spellcheck':
+        path = urlparse(self.path).path
+        if path == '/api/spellcheck':
             self.handle_spellcheck()
-        elif self.path == '/api/compile':
+        elif path == '/api/compile':
             self.handle_compile()
         else:
             self.send_response(404)
@@ -177,9 +197,26 @@ class DesktopHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': str(e)}).encode())
 
     def handle_compile(self):
-        """Proxy /api/compile to the remote backend (avoids CORS from localhost)."""
+        """Execute locally if compiler is installed, or proxy to remote backend."""
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length)
+
+        try:
+            payload = json.loads(post_data.decode('utf-8'))
+            code = payload.get('code', '')
+            language = payload.get('language', '')
+            local_res = try_local_execute(code, language)
+            if local_res is not None:
+                body = json.dumps(local_res).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(body)
+                return
+        except Exception as e:
+            print("EXCEPTION IN LOCAL_EXEC:", repr(e), flush=True)
+
         try:
             req = Request(
                 BACKEND_URL,
@@ -227,7 +264,15 @@ def main():
     time.sleep(0.5)
     
     url = f'http://localhost:{PORT}'
-    
+
+    if os.environ.get('DESKTOP_NO_GUI') or '--no-gui' in sys.argv:
+        print(f"Running server without GUI at {url}")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            return
+
     if USE_WEBVIEW:
         # Create native window
         window = webview.create_window(

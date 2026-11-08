@@ -144,7 +144,7 @@
   function runSpellcheck() {
     const codeEl = document.getElementById('code');
     if (!codeEl) return;
-    const code = codeEl.textContent || codeEl.value || '';
+    const code = (codeEl.innerText !== undefined ? codeEl.innerText : codeEl.textContent) || codeEl.value || '';
     const language = document.getElementById('language')?.value || 'python';
     const langCode = LANGUAGE_MAP[language] || 'en';
 
@@ -219,10 +219,10 @@
   function replaceWord(oldWord, newWord) {
     const codeEl = document.getElementById('code');
     if (!codeEl) return;
-    const text = codeEl.textContent || codeEl.value || '';
+    const text = (codeEl.innerText !== undefined ? codeEl.innerText : codeEl.textContent) || codeEl.value || '';
     const regex = new RegExp(`\\b${escapeRegExp(oldWord)}\\b`, 'g');
     const newText = text.replace(regex, newWord);
-    codeEl.textContent = newText;
+    codeEl.innerText = newText;
     if (codeEl.dispatchEvent) {
       codeEl.dispatchEvent(new Event('input', { bubbles: true }));
     }

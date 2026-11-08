@@ -11,7 +11,7 @@ MAX_CODE_SIZE = 100 * 1024
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-TIMEOUT = 5  # seconds – enforced inside Docker and in subprocess fallback
+TIMEOUT = int(os.environ.get('COMPILE_TIMEOUT', '15'))  # seconds – enforced inside Docker and in subprocess fallback
 MAX_OUTPUT = 10000  # characters – truncate stdout / stderr
 
 # Rate limiting: máximo de requisições por IP por minuto
@@ -213,6 +213,20 @@ def execute_code(cfg, src_path, language=None):
     # For no_exec languages (e.g. htmlcss), just return the file content
     if cfg.get('no_exec'):
         return src_content, ""
+
+    # C# fallback when Docker and dotnet-script are absent but dotnet SDK is installed
+    if language == 'csharp' and not docker_available() and shutil.which('dotnet') and not shutil.which('dotnet-script'):
+        proj_dir = tempfile.mkdtemp()
+        try:
+            with open(os.path.join(proj_dir, 'App.csproj'), 'w') as pf:
+                pf.write('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup></Project>')
+            shutil.copyfile(src_path, os.path.join(proj_dir, 'Program.cs'))
+            out, err = run_subprocess(['dotnet', 'run', '--project', proj_dir], cwd=proj_dir)
+            if os.path.exists(src_path):
+                os.remove(src_path)
+            return out, err
+        finally:
+            shutil.rmtree(proj_dir, ignore_errors=True)
 
     # Compilation step for compiled languages
     if cfg.get('compile'):
