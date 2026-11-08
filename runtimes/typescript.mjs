@@ -2,13 +2,10 @@
 // Sem emissão de arquivos; execução em memória, sandbox do QuickJS.
 // Valida padrões perigosos antes e depois da transpilação.
 
-import * as tsMod from 'https://cdn.jsdelivr.net/npm/typescript@5.7.2/lib/typescript.js';
+import * as tsMod from 'https://cdn.jsdelivr.net/npm/typescript@5.7.2/+esm';
 import { getQuickJS } from 'https://cdn.jsdelivr.net/npm/quickjs-emscripten@0.31.0/+esm';
 
 const ts = tsMod.default || tsMod;
-
-const MEMORY_LIMIT = 64 * 1024 * 1024;
-const STACK_LIMIT = 1024 * 1024;
 
 const DANGEROUS_PATTERNS = [
   'eval\\s*\\(',
@@ -98,16 +95,37 @@ export async function run(code) {
   }
 
   const vm = quickjs.newContext();
+  const logs = [];
   try {
+    const logFn = vm.newFunction("log", (...args) => {
+      const nativeArgs = args.map(arg => vm.dump(arg));
+      logs.push(nativeArgs.map(a => typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a)).join(' '));
+    });
+    const consoleHandle = vm.newObject();
+    vm.setProp(consoleHandle, "log", logFn);
+    vm.setProp(consoleHandle, "warn", logFn);
+    vm.setProp(consoleHandle, "error", logFn);
+    vm.setProp(consoleHandle, "info", logFn);
+    vm.setProp(vm.global, "console", consoleHandle);
+    consoleHandle.dispose();
+    logFn.dispose();
+
     const result = vm.evalCode(transpiled);
     if (result.error) {
-      const msg = vm.dump(result.error);
+      const errorObj = vm.dump(result.error);
       result.error.dispose();
-      return { output: "", error: msg || String(result.error) };
+      const msg = (errorObj && typeof errorObj === 'object')
+        ? (errorObj.message || errorObj.name || JSON.stringify(errorObj))
+        : String(errorObj || "Unknown error");
+      return { output: logs.join('\n'), error: msg };
     }
-    const output = vm.dump(result.value);
+    const evaluated = vm.dump(result.value);
     result.value.dispose();
-    return { output: output == null ? "" : String(output), error: null };
+    let output = logs.join('\n');
+    if (output.length === 0 && evaluated !== undefined) {
+      output = typeof evaluated === 'object' && evaluated !== null ? JSON.stringify(evaluated) : String(evaluated);
+    }
+    return { output, error: null };
   } finally {
     vm.dispose();
   }

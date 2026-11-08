@@ -1,11 +1,11 @@
-// runtimes/typescript.mjs — Executa TypeScript via QuickJS (WASM).
-// TypeScript sem anotações de tipo é JavaScript válido, roda direto.
-// Sem dependência externa de CDN — sem risco de falha de importação.
+// runtimes/typescript.mjs — Transpila TypeScript para JavaScript e executa via QuickJS (WASM).
+// Sem emissão de arquivos; execução em memória, sandbox do QuickJS.
+// Valida padrões perigosos antes e depois da transpilação.
 
+import * as tsMod from 'https://cdn.jsdelivr.net/npm/typescript@5.7.2/+esm';
 import { getQuickJS } from 'https://cdn.jsdelivr.net/npm/quickjs-emscripten@0.31.0/+esm';
 
-const MEMORY_LIMIT = 64 * 1024 * 1024;
-const STACK_LIMIT = 1024 * 1024;
+const ts = tsMod.default || tsMod;
 
 const DANGEROUS_PATTERNS = [
   'eval\\s*\\(',
@@ -71,39 +71,61 @@ export async function run(code) {
     return { output: "", error: ok.error };
   }
   await init();
+  let transpiled;
+  try {
+    transpiled = ts.transpileModule(code, {
+      compilerOptions: {
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.ES2020,
+        strict: false,
+        esModuleInterop: true,
+      },
+    }).outputText;
+  } catch (err) {
+    return {
+      output: "",
+      error: `TypeScript transpile error: ${err.message || String(err)}`,
+    };
+  }
 
-  // TypeScript sem anotações de tipo é JavaScript válido, roda direto no QuickJS.
-  const transpiled = code;
+  // Valida o código transpilado também
+  const ok2 = validateCode(transpiled);
+  if (!ok2.ok) {
+    return { output: "", error: ok2.error };
+  }
 
   const vm = quickjs.newContext();
+  const logs = [];
   try {
-    // Set up console.log shim and output capture
-    vm.evalCode(`globalThis.__output = '';`);
-    vm.evalCode(`
-      globalThis.console = {
-        log: (...args) => { globalThis.__output += args.join(' ') + '\\n'; },
-        error: (...args) => { globalThis.__output += args.join(' ') + '\\n'; },
-        warn: (...args) => { globalThis.__output += args.join(' ') + '\\n'; },
-        info: (...args) => { globalThis.__output += args.join(' ') + '\\n'; }
-      };
-    `);
+    const logFn = vm.newFunction("log", (...args) => {
+      const nativeArgs = args.map(arg => vm.dump(arg));
+      logs.push(nativeArgs.map(a => typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a)).join(' '));
+    });
+    const consoleHandle = vm.newObject();
+    vm.setProp(consoleHandle, "log", logFn);
+    vm.setProp(consoleHandle, "warn", logFn);
+    vm.setProp(consoleHandle, "error", logFn);
+    vm.setProp(consoleHandle, "info", logFn);
+    vm.setProp(vm.global, "console", consoleHandle);
+    consoleHandle.dispose();
+    logFn.dispose();
 
     const result = vm.evalCode(transpiled);
-
-    // Retrieve captured console output
-    const outResult = vm.evalCode(`globalThis.__output`);
-    const captured = vm.dump(outResult);
-    outResult.dispose();
-
     if (result.error) {
-      const msg = vm.dump(result.error);
+      const errorObj = vm.dump(result.error);
       result.error.dispose();
-      return { output: captured || "", error: msg || String(result.error) };
+      const msg = (errorObj && typeof errorObj === 'object')
+        ? (errorObj.message || errorObj.name || JSON.stringify(errorObj))
+        : String(errorObj || "Unknown error");
+      return { output: logs.join('\n'), error: msg };
     }
-
-    const output = vm.dump(result.value);
+    const evaluated = vm.dump(result.value);
     result.value.dispose();
-    return { output: (captured || "") + (output == null ? "" : String(output)), error: null };
+    let output = logs.join('\n');
+    if (output.length === 0 && evaluated !== undefined) {
+      output = typeof evaluated === 'object' && evaluated !== null ? JSON.stringify(evaluated) : String(evaluated);
+    }
+    return { output, error: null };
   } finally {
     vm.dispose();
   }

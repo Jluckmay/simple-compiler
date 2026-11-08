@@ -72,14 +72,23 @@ export async function run(code) {
   const originalLog = console.log;
   console.log = (...args) => {
     const msg = args.map(String).join(" ");
-    // Captura saída do R (webr envia como "[log] [1] 2" ou similar)
-    if (msg.includes("[1]") || msg.match(/^\[/)) {
+    if (!msg.startsWith('webR') && !msg.startsWith('[webR]') && !msg.includes('Downloading webR')) {
       output.push(msg.replace(/^\[log\]\s*/, ""));
     }
     originalLog.apply(console, args);
   };
   try {
-    await r.evalR(code);
+    const evalResult = await r.evalR(code);
+    if (output.length === 0 && evalResult) {
+      try {
+        const jsVal = await evalResult.toJs();
+        if (jsVal && jsVal.values !== undefined) {
+          output.push(Array.isArray(jsVal.values) ? jsVal.values.join(' ') : String(jsVal.values));
+        }
+      } catch (_) {}
+    }
+  } catch (err) {
+    return { output: output.join("\n"), error: err.message || String(err) };
   } finally {
     console.log = originalLog;
   }
